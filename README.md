@@ -56,6 +56,32 @@ This project implements a discounted cash flow (DCF) valuation model with a Mont
 
   Open [valuation.ipynb](valuation.ipynb) in Jupyter Notebook or JupyterLab to explore and visualize the steps interactively.
 
+## Running as a Web App
+
+You can also use this project as an interactive web application using [Streamlit](https://streamlit.io/):
+
+1. **Install Streamlit** (if you haven't already):
+
+   ```bash
+   pip install streamlit
+   ```
+
+2. **Run the App**:
+
+   From the project root directory, launch the web app with:
+
+   ```bash
+   streamlit run app.py
+   ```
+
+3. **Interact in Your Browser**:
+
+   - Enter your valuation assumptions in the sidebar.
+   - Click "Run Valuation" to compute the DCF and run the Monte Carlo simulation.
+   - Results and share price distribution histogram will display interactively.
+
+> The webapp uses the same model logic as the scripts, so results are consistent between modes.
+
 ## Overview of Key Functions
 
 - **Calculation Functions**  

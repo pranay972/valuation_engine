@@ -1,0 +1,7 @@
+# ignore .venv
+.venv/
+# ignore python bytecode
+__pycache__/
+# ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
