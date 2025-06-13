@@ -2,6 +2,7 @@
 .venv/
 # ignore python bytecode
 __pycache__/
+.pytest_cache/
 # ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 

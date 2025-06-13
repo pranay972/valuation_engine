@@ -11,6 +11,7 @@ fonttools==4.58.2
 gitdb==4.0.12
 GitPython==3.1.44
 idna==3.10
+iniconfig==2.1.0
 Jinja2==3.1.6
 jsonschema==4.24.0
 jsonschema-specifications==2025.4.1
@@ -22,10 +23,13 @@ numpy==2.3.0
 packaging==24.2
 pandas==2.3.0
 pillow==11.2.1
+pluggy==1.6.0
 protobuf==6.31.1
 pyarrow==20.0.0
 pydeck==0.9.1
+Pygments==2.19.1
 pyparsing==3.2.3
+pytest==8.4.0
 python-dateutil==2.9.0.post0
 pytz==2025.2
 referencing==0.36.2
