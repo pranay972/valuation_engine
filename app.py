@@ -1,103 +1,112 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from valuation import (
-    calculate_cost_of_equity, calculate_wacc, forecast_fcfs, 
-    calculate_terminal_value, discount_cash_flows, discount_terminal_value
-)
-from montecarlo import run_monte_carlo_simulation, plot_monte_carlo_results
+from params import ValuationParams
+from valuation import run_single_valuations
+from montecarlo import run_monte_carlo
+from multiples import run_multiples_analysis
 
-st.title("DCF Valuation & Monte Carlo Simulator")
+st.set_page_config(page_title="🔍 Advanced Valuation Dashboard", layout="wide")
 
-# Sidebar Inputs
-risk_free_rate = st.sidebar.number_input("Risk-Free Rate", 0.0, 0.2, 0.03)
-beta = st.sidebar.number_input("Beta", 0.0, 2.0, 1.2)
-market_risk_premium = st.sidebar.number_input("Market Risk Premium", 0.0, 0.2, 0.05)
-cost_of_debt = st.sidebar.number_input("Cost of Debt", 0.0, 0.2, 0.055)
-tax_rate = st.sidebar.number_input("Tax Rate", 0.0, 1.0, 0.21)
-total_debt = st.sidebar.number_input("Total Debt", 0, 1_000_000_000, 500_000_000)
-cash_and_equivalents = st.sidebar.number_input("Cash & Equivalents", 0, 1_000_000_000, 200_000_000)
-shares_outstanding = st.sidebar.number_input("Shares Outstanding", 1, 1_000_000_000, 50_000_000)
-FCF_0 = st.sidebar.number_input("FCF_0", 0, 1_000_000_000, 100_000_000)
-g_exp = st.sidebar.number_input("Expected FCF Growth", 0.0, 1.0, 0.10)
-n = st.sidebar.number_input("Years to Forecast", 1, 20, 5)
-g_term = st.sidebar.number_input("Terminal Growth Rate", 0.0, 0.1, 0.025)
-placeholder_share_price = st.sidebar.number_input("Placeholder Share Price", 0.0, 1000.0, 41.72)
+st.title("🔍 Advanced Valuation Dashboard")
+st.markdown("A streamlined interface for DCF (WACC & APV), Monte Carlo simulation, and peer multiples analysis.")
 
-# DCF & Monte Carlo configuration
-num_simulations = st.sidebar.number_input("Monte Carlo Simulations", 100, 10000, 1000, step=100)
+# --- INPUT FORM ---
+with st.sidebar.form("params_form", clear_on_submit=False):
+    st.header("📥 Core Parameters")
+    rf = st.number_input("Risk-Free Rate (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1,
+                         help="Use the yield on 10-year government bonds")
+    mkt_prem = st.number_input("Market Risk Premium (%)", min_value=0.0, max_value=10.0, value=6.0, step=0.1)
+    cd = st.number_input("Cost of Debt (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1)
+    tax = st.number_input("Tax Rate (%)", min_value=0.0, max_value=100.0, value=21.0, step=1.0)
+    st.markdown("---")
+    st.header("⚖️ Balance Sheet")
+    total_debt = st.number_input("Total Debt (Billion $)", min_value=0.0, max_value=2000.0, value=100.0, step=10.0)
+    cash = st.number_input("Cash & Equivalents (Billion $)", min_value=0.0, max_value=2000.0, value=50.0, step=10.0)
+    shares = st.number_input("Shares Outstanding (Millions)", min_value=1.0, max_value=100000.0, value=5000.0, step=100.0)
+    st.markdown("---")
+    st.header("📈 Forecast Settings")
+    horizon = st.slider("Forecast Horizon (years)", 1, 20, 5)
+    dv_ratio = st.slider("Target D/V Ratio", 0.0, 1.0, 0.25, step=0.05)
+    mid_year = st.checkbox("Use Mid-Year Discounting", True)
+    fcf_mode = st.radio("FCF Input Mode", ["AUTO", "LIST"], index=0)
+    base_fcf = st.number_input("Base FCF (Billion $)", min_value=0.0, max_value=500.0, value=10.0, step=1.0)
+    g_exp = st.slider("Explicit Growth Rate (%)", 0.0, 30.0, 8.0, step=0.5)
+    g_term = st.slider("Terminal Growth Rate (%)", 0.0, 10.0, 2.0, step=0.25)
+    fcf_list = []
+    if fcf_mode == "LIST":
+        raw = st.text_area("Enter FCFs (comma-separated, Billion $)", ",".join([f"{base_fcf*(1+g_exp/100)**i:.1f}" for i in range(horizon)]))
+        try:
+            fcf_list = [float(x) for x in raw.split(",")]
+        except:
+            st.error("Invalid FCF list format.")
 
-if st.button("Run Valuation"):
-    # --- VALIDATIONS ---
-    try:
-        assert g_term < risk_free_rate + beta * market_risk_premium, \
-            "Terminal growth rate must be less than cost of equity"
-        assert shares_outstanding > 0, "Shares outstanding must be positive"
-    except AssertionError as e:
-        st.error(str(e))
-        st.stop()
-    
-    # --- VALUATION CALCULATION ---
-    cost_of_equity = calculate_cost_of_equity(risk_free_rate, beta, market_risk_premium)
-    market_value_equity = shares_outstanding * placeholder_share_price
-    net_debt = max(total_debt - cash_and_equivalents, 0)
-    WACC = calculate_wacc(cost_of_equity, cost_of_debt, tax_rate, market_value_equity, net_debt)
-    fcf_list = forecast_fcfs(FCF_0, g_exp, n)
-    FCF_n = fcf_list[-1]
-    TV = calculate_terminal_value(FCF_n, g_term, WACC)
-    PV_FCF = discount_cash_flows(fcf_list, WACC)
-    PV_TV = discount_terminal_value(TV, WACC, n)
-    EV = PV_FCF + PV_TV
-    equity_value = EV - net_debt
-    share_price = equity_value / shares_outstanding
-    
-    # --- OUTPUT VALUATION RESULTS ---
-    st.subheader("DCF Valuation Output")
-    st.write(f"**Cost of Equity:** {cost_of_equity:.2%}")
-    st.write(f"**WACC:** {WACC:.2%}")
-    st.write(f"**PV of Forecasted FCFs:** ${PV_FCF:,.0f}")
-    st.write(f"**PV of Terminal Value:** ${PV_TV:,.0f}")
-    st.write(f"**Enterprise Value (EV):** ${EV:,.0f}")
-    st.write(f"**Equity Value:** ${equity_value:,.0f}")
-    st.write(f"**Implied Share Price:** ${share_price:,.2f}")
-    
-    # --- MONTE CARLO SIMULATION ---
-    monte_carlo_config = {
-        "beta": {"mean": beta, "std": 0.2, "dist": "normal"},
-        "g_exp": {"mean": g_exp, "std": 0.03, "dist": "normal"},
-        "g_term": {"mean": g_term, "std": 0.005, "dist": "truncated_normal"},
-        "cost_of_debt": {"mean": cost_of_debt, "std": 0.01, "dist": "normal"},
-        "placeholder_share_price": {"mean": placeholder_share_price, "std": 3.0, "dist": "normal"}
-    }
+    st.markdown("---")
+    st.header("🎲 Monte Carlo")
+    run_mc = st.checkbox("Enable Monte Carlo", True)
+    mc_runs = st.number_input("MC Iterations", min_value=100, max_value=100000, value=2000, step=100)
+    submitted = st.form_submit_button("Run Analysis")
 
-    # Prepare function references
-    sim_inputs = {
-        "risk_free_rate": risk_free_rate,
-        "market_risk_premium": market_risk_premium,
-        "shares_outstanding": shares_outstanding,
-        "FCF_0": FCF_0,
-        "n": n,
-        "tax_rate": tax_rate,
-        "net_debt": net_debt,
-        "calculate_cost_of_equity": calculate_cost_of_equity,
-        "calculate_wacc": calculate_wacc,
-        "forecast_fcfs": forecast_fcfs,
-        "calculate_terminal_value": calculate_terminal_value,
-        "discount_cash_flows": discount_cash_flows,
-        "discount_terminal_value": discount_terminal_value,
-    }
+# Instantiate params
+if submitted:
+    params = ValuationParams(
+        risk_free_rate=rf/100,
+        market_risk_premium=mkt_prem/100,
+        cost_of_debt=cd/100,
+        tax_rate=tax/100,
+        total_debt=total_debt * 1e9,
+        cash_and_equivalents=cash * 1e9,
+        shares_outstanding=shares * 1e6,
+        n=horizon,
+        target_debt_ratio=dv_ratio,
+        mid_year_discount=mid_year,
+        fcf_input_mode=fcf_mode,
+        FCF_0=base_fcf * 1e9,
+        g_exp=g_exp/100,
+        g_term=g_term/100,
+        fcf_list=[x * 1e9 for x in fcf_list] if fcf_list else None
+    )
 
-    df_results = run_monte_carlo_simulation(sim_inputs, monte_carlo_config, num_simulations)
+    # --- Single Valuation ---
+    st.subheader("1️⃣ Single Valuation (WACC & APV)")
+    df_single = run_single_valuations(params, ["WACC", "APV"])
+    st.dataframe(df_single.style.format({
+        "EV ($B)": "{:.2f}", "Equity ($B)": "{:.2f}", "Share Price ($)": "{:.2f}"
+    }), height=200)
 
-    st.subheader("Monte Carlo Simulation Results")
-    st.write(df_results.describe(percentiles=[0.05, 0.25, 0.5, 0.75, 0.95])["Share Price ($)"])
+    # Breakdown PV by year for first method
+    st.markdown("**Detailed Cash-Flow Breakdown (WACC)**")
+    fcf = params.fcf_list if fcf_list else None
+    # (Could implement extraction of PV table here... placeholder)
+    st.write("*Detailed PV table will appear here.*")
 
-    # Display histogram plot in Streamlit
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.hist(df_results["Share Price ($)"], bins=50, edgecolor='black')
-    ax.set_title("Monte Carlo Simulation: Share Price Distribution")
-    ax.set_xlabel("Implied Share Price ($)")
-    ax.set_ylabel("Frequency")
-    ax.grid(True)
-    plt.tight_layout()
-    st.pyplot(fig)
+    # --- Monte Carlo ---
+    if run_mc:
+        st.subheader("2️⃣ Monte Carlo Simulation")
+        df_mc, ev_store = run_monte_carlo(params, ["WACC", "APV"], runs=int(mc_runs), seed=42)
+        st.dataframe(df_mc.style.format({
+            "EV Mean ($B)": "{:.2f}", "EV Median ($B)": "{:.2f}", "EV P5 ($B)": "{:.2f}", "EV P95 ($B)": "{:.2f}",
+            "Price Mean ($)": "{:.2f}", "Price Median ($)": "{:.2f}", "Price P5 ($)": "{:.2f}", "Price P95 ($)": "{:.2f}"
+        }), height=200)
+
+        # Histograms
+        st.markdown("**Price Distributions**")
+        cols = st.columns(2)
+        net_debt = params.total_debt - params.cash_and_equivalents
+        for i, m in enumerate(["WACC", "APV"]):
+            prices = (ev_store[m] - net_debt) / params.shares_outstanding
+            with cols[i]:
+                fig, ax = plt.subplots()
+                ax.hist(prices, bins=30)
+                ax.set_title(f"{m} Distribution")
+                ax.set_xlabel("Price ($)")
+                st.pyplot(fig)
+
+    # --- Peer Multiples ---
+    st.subheader("3️⃣ Peer Multiples Analysis")
+    df_mult = run_multiples_analysis(params)
+    st.dataframe(df_mult.style.format({"Mean Price ($)": "{:.2f}", "Median Price ($)": "{:.2f}"}), height=150)
+
+else:
+    st.info("🔧 Configure inputs and click **Run Analysis** to view results.")
