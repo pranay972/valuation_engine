@@ -1,112 +1,169 @@
+# app.py
+
 import streamlit as st
 import pandas as pd
-import numpy as np
+import json
 import matplotlib.pyplot as plt
+
 from params import ValuationParams
-from valuation import run_single_valuations
+from valuation import calc_dcf_series, calc_apv
 from montecarlo import run_monte_carlo
 from multiples import run_multiples_analysis
+from scenario import run_scenarios
+from sensitivity import run_sensitivity_analysis
 
-st.set_page_config(page_title="🔍 Advanced Valuation Dashboard", layout="wide")
+st.set_page_config(page_title="Valuation Engine", layout="wide")
+st.title("📊 Valuation Engine")
 
-st.title("🔍 Advanced Valuation Dashboard")
-st.markdown("A streamlined interface for DCF (WACC & APV), Monte Carlo simulation, and peer multiples analysis.")
-
-# --- INPUT FORM ---
-with st.sidebar.form("params_form", clear_on_submit=False):
-    st.header("📥 Core Parameters")
-    rf = st.number_input("Risk-Free Rate (%)", min_value=0.0, max_value=10.0, value=2.0, step=0.1,
-                         help="Use the yield on 10-year government bonds")
-    mkt_prem = st.number_input("Market Risk Premium (%)", min_value=0.0, max_value=10.0, value=6.0, step=0.1)
-    cd = st.number_input("Cost of Debt (%)", min_value=0.0, max_value=10.0, value=4.0, step=0.1)
-    tax = st.number_input("Tax Rate (%)", min_value=0.0, max_value=100.0, value=21.0, step=1.0)
-    st.markdown("---")
-    st.header("⚖️ Balance Sheet")
-    total_debt = st.number_input("Total Debt (Billion $)", min_value=0.0, max_value=2000.0, value=100.0, step=10.0)
-    cash = st.number_input("Cash & Equivalents (Billion $)", min_value=0.0, max_value=2000.0, value=50.0, step=10.0)
-    shares = st.number_input("Shares Outstanding (Millions)", min_value=1.0, max_value=100000.0, value=5000.0, step=100.0)
-    st.markdown("---")
-    st.header("📈 Forecast Settings")
-    horizon = st.slider("Forecast Horizon (years)", 1, 20, 5)
-    dv_ratio = st.slider("Target D/V Ratio", 0.0, 1.0, 0.25, step=0.05)
-    mid_year = st.checkbox("Use Mid-Year Discounting", True)
-    fcf_mode = st.radio("FCF Input Mode", ["AUTO", "LIST"], index=0)
-    base_fcf = st.number_input("Base FCF (Billion $)", min_value=0.0, max_value=500.0, value=10.0, step=1.0)
-    g_exp = st.slider("Explicit Growth Rate (%)", 0.0, 30.0, 8.0, step=0.5)
-    g_term = st.slider("Terminal Growth Rate (%)", 0.0, 10.0, 2.0, step=0.25)
-    fcf_list = []
-    if fcf_mode == "LIST":
-        raw = st.text_area("Enter FCFs (comma-separated, Billion $)", ",".join([f"{base_fcf*(1+g_exp/100)**i:.1f}" for i in range(horizon)]))
-        try:
-            fcf_list = [float(x) for x in raw.split(",")]
-        except:
-            st.error("Invalid FCF list format.")
-
-    st.markdown("---")
-    st.header("🎲 Monte Carlo")
-    run_mc = st.checkbox("Enable Monte Carlo", True)
-    mc_runs = st.number_input("MC Iterations", min_value=100, max_value=100000, value=2000, step=100)
-    submitted = st.form_submit_button("Run Analysis")
-
-# Instantiate params
-if submitted:
-    params = ValuationParams(
-        risk_free_rate=rf/100,
-        market_risk_premium=mkt_prem/100,
-        cost_of_debt=cd/100,
-        tax_rate=tax/100,
-        total_debt=total_debt * 1e9,
-        cash_and_equivalents=cash * 1e9,
-        shares_outstanding=shares * 1e6,
-        n=horizon,
-        target_debt_ratio=dv_ratio,
-        mid_year_discount=mid_year,
-        fcf_input_mode=fcf_mode,
-        FCF_0=base_fcf * 1e9,
-        g_exp=g_exp/100,
-        g_term=g_term/100,
-        fcf_list=[x * 1e9 for x in fcf_list] if fcf_list else None
+# --- STEP 1: Setup form ---
+with st.form("setup"):
+    st.header("1️⃣ Choose Analyses")
+    input_mode = st.radio(
+        "Cash-flow input mode:",
+        ["Drivers (revenue/margins/etc.)", "Direct FCF series"]
     )
+    dcf_methods = st.multiselect(
+        "DCF methods to run:", 
+        ["WACC", "APV"], 
+        default=["WACC"]
+    )
+    do_mc   = st.checkbox("Monte Carlo")
+    do_mult = st.checkbox("Multiples")
+    do_scen = st.checkbox("Scenarios")
+    do_sens = st.checkbox("Sensitivity")
+    setup_submitted = st.form_submit_button("Next →")
 
-    # --- Single Valuation ---
-    st.subheader("1️⃣ Single Valuation (WACC & APV)")
-    df_single = run_single_valuations(params, ["WACC", "APV"])
-    st.dataframe(df_single.style.format({
-        "EV ($B)": "{:.2f}", "Equity ($B)": "{:.2f}", "Share Price ($)": "{:.2f}"
-    }), height=200)
+if not setup_submitted:
+    st.stop()
 
-    # Breakdown PV by year for first method
-    st.markdown("**Detailed Cash-Flow Breakdown (WACC)**")
-    fcf = params.fcf_list if fcf_list else None
-    # (Could implement extraction of PV table here... placeholder)
-    st.write("*Detailed PV table will appear here.*")
+# --- STEP 2: Inputs for chosen analyses ---
+st.header("2️⃣ Enter Inputs")
 
-    # --- Monte Carlo ---
-    if run_mc:
-        st.subheader("2️⃣ Monte Carlo Simulation")
-        df_mc, ev_store = run_monte_carlo(params, ["WACC", "APV"], runs=int(mc_runs), seed=42)
-        st.dataframe(df_mc.style.format({
-            "EV Mean ($B)": "{:.2f}", "EV Median ($B)": "{:.2f}", "EV P5 ($B)": "{:.2f}", "EV P95 ($B)": "{:.2f}",
-            "Price Mean ($)": "{:.2f}", "Price Median ($)": "{:.2f}", "Price P5 ($)": "{:.2f}", "Price P95 ($)": "{:.2f}"
-        }), height=200)
-
-        # Histograms
-        st.markdown("**Price Distributions**")
-        cols = st.columns(2)
-        net_debt = params.total_debt - params.cash_and_equivalents
-        for i, m in enumerate(["WACC", "APV"]):
-            prices = (ev_store[m] - net_debt) / params.shares_outstanding
-            with cols[i]:
-                fig, ax = plt.subplots()
-                ax.hist(prices, bins=30)
-                ax.set_title(f"{m} Distribution")
-                ax.set_xlabel("Price ($)")
-                st.pyplot(fig)
-
-    # --- Peer Multiples ---
-    st.subheader("3️⃣ Peer Multiples Analysis")
-    df_mult = run_multiples_analysis(params)
-    st.dataframe(df_mult.style.format({"Mean Price ($)": "{:.2f}", "Median Price ($)": "{:.2f}"}), height=150)
-
+# 2a) Cash-flow inputs
+if input_mode.startswith("Drivers"):
+    revenue      = st.text_input("Revenue series (comma-sep)", "100,110,120")
+    capex        = st.text_input("CapEx series (comma-sep)",  "10,11,12")
+    depreciation = st.text_input("Depreciation series (comma-sep)", "5,6,7")
+    nwc_changes  = st.text_input("NWC Changes series (comma-sep)", "2,2,2")
 else:
-    st.info("🔧 Configure inputs and click **Run Analysis** to view results.")
+    fcf_series = st.text_input("Free Cash Flow series (comma-sep)", "50,55,60")
+
+# 2b) Core assumptions
+wacc           = st.number_input("WACC (decimal)", 0.0, 1.0, 0.10, 0.005)
+tax_rate       = st.number_input("Tax rate (decimal)", 0.0, 1.0, 0.21, 0.005)
+terminal_growth= st.number_input("Terminal growth (decimal)", 0.0, 1.0, 0.02, 0.005)
+share_count    = st.number_input("Share count", 1.0, 1e12, 1.0, 1.0)
+cost_of_debt   = st.number_input("Cost of debt (0 = WACC)", 0.0, 1.0, 0.0, 0.005)
+
+# 2c) Module-specific inputs
+debt_schedule = {}
+if "APV" in dcf_methods:
+    ds = st.text_area("Debt schedule (JSON year→amount)", '{"0":0}')
+    try:
+        debt_schedule = {int(k):float(v) for k,v in json.loads(ds).items()}
+    except:
+        st.error("Invalid debt schedule JSON")
+
+mc_specs = {}
+if do_mc:
+    ms = st.text_area("Monte Carlo specs (JSON)", 
+                      '{"wacc":{"dist":"normal","params":{"loc":0.10,"scale":0.01}}}')
+    try:
+        mc_specs = json.loads(ms)
+    except:
+        st.error("Invalid MC specs JSON")
+
+comps_file = None
+if do_mult:
+    comps_file = st.file_uploader("Peer Comps CSV", type="csv")
+
+scenarios = {}
+if do_scen:
+    sj = st.text_area("Scenarios (JSON)", '{"Base":{}}')
+    try:
+        scenarios = json.loads(sj)
+    except:
+        st.error("Invalid Scenarios JSON")
+
+sensitivity = {}
+if do_sens:
+    ss = st.text_area("Sensitivity ranges (JSON)", '{"wacc":[0.08,0.10,0.12]}')
+    try:
+        sensitivity = json.loads(ss)
+    except:
+        st.error("Invalid Sensitivity JSON")
+
+# --- RUN button ---
+if st.button("▶️ Run Valuation"):
+    # Parse series text → lists
+    def to_list(txt):
+        return [float(x.strip()) for x in txt.split(",") if x.strip()]
+    params = ValuationParams()
+    params.wacc            = wacc
+    params.tax_rate        = tax_rate
+    params.terminal_growth = terminal_growth
+    params.share_count     = share_count
+    params.cost_of_debt    = cost_of_debt
+    params.debt_schedule   = debt_schedule
+    params.variable_specs  = mc_specs
+    params.scenarios       = scenarios
+    params.sensitivity_ranges = sensitivity
+
+    if input_mode.startswith("Drivers"):
+        params.revenue      = to_list(revenue)
+        params.capex        = to_list(capex)
+        params.depreciation = to_list(depreciation)
+        params.nwc_changes  = to_list(nwc_changes)
+    else:
+        params.fcf_series   = to_list(fcf_series)
+
+    # 1) DCF outputs
+    st.subheader("📈 DCF Results")
+    rows = []
+    if "WACC" in dcf_methods:
+        ev, eq, ps = calc_dcf_series(params)
+        rows.append({"Method":"WACC DCF", "EV":ev, "Equity":eq, "PS":ps})
+    if "APV" in dcf_methods:
+        ev, eq, ps = calc_apv(params)
+        rows.append({"Method":"APV",      "EV":ev, "Equity":eq, "PS":ps})
+    st.table(pd.DataFrame(rows))
+
+    # 2) Monte Carlo
+    if do_mc:
+        with st.spinner("Running Monte Carlo…"):
+            mc = run_monte_carlo(params)
+        st.subheader("🎲 Monte Carlo (WACC EV)")
+        df_mc = mc["WACC"]
+        st.write(df_mc["EV"].describe())
+        fig, ax = plt.subplots()
+        ax.hist(df_mc["EV"], bins=30)
+        ax.set_xlabel("EV"); ax.set_ylabel("Freq")
+        st.pyplot(fig)
+
+    # 3) Multiples
+    if do_mult and comps_file:
+        comps = pd.read_csv(comps_file)
+        mv = run_multiples_analysis(params, comps)
+        st.subheader("📊 Multiples")
+        st.table(mv)
+
+    # 4) Scenarios
+    if do_scen:
+        sc = run_scenarios(params)
+        st.subheader("🔮 Scenarios")
+        st.table(sc)
+
+    # 5) Sensitivity
+    if do_sens:
+        sd = run_sensitivity_analysis(params)
+        st.subheader("🔍 Sensitivity")
+        st.table(sd)
+        # tornado for first param
+        first = next(iter(sensitivity), None)
+        if first:
+            fig2, ax2 = plt.subplots()
+            ax2.barh([str(v) for v in sensitivity[first]], sd[first])
+            ax2.set_xlabel("EV"); ax2.set_title(f"Sensitivity: {first}")
+            st.pyplot(fig2)
+
+    st.success("✅ Done!")

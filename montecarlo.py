@@ -1,41 +1,68 @@
+# montecarlo.py
+
+"""
+Monte Carlo engine for valuation:
+
+  – For each method in ["WACC", "APV"]:
+      • Draw 'runs' samples of user-specified variables
+      • Override params for each sample
+      • Compute EV, Equity value, and Price/Share
+  – Returns a dict of DataFrames keyed by method
+"""
+
+import copy
+from typing import Dict
 import numpy as np
-from typing import List, Dict
+import pandas as pd
+
 from params import ValuationParams
-from valuation import single_ev
+from valuation import calc_dcf_series, calc_apv
 
-def run_monte_carlo(params: ValuationParams,
-                    methods: List[str],
-                    runs: int=2000,
-                    seed: int=42) -> tuple[object, Dict[str, np.ndarray]]:
-    np.random.seed(seed)
-    betas   = np.maximum(0, np.random.normal(1.1,1.1*0.1,runs))
-    cds     = np.maximum(0, np.random.normal(params.cost_of_debt, params.cost_of_debt*0.1, runs))
-    g_exps  = np.maximum(0, np.random.normal(params.g_exp, params.g_exp*0.1, runs))
-    g_terms = np.maximum(0, np.random.normal(params.g_term, params.g_term*0.1, runs))
-    dvs     = np.clip(np.random.normal(params.target_debt_ratio, params.target_debt_ratio*0.1, runs),0,1)
+def run_monte_carlo(
+    params: ValuationParams,
+    runs: int = 2000
+) -> Dict[str, pd.DataFrame]:
+    """
+    Args:
+      params: ValuationParams object with base inputs and variable_specs
+      runs: Number of Monte Carlo iterations
 
-    import pandas as pd
-    summary=[]
-    ev_store={}
-    net_debt=params.total_debt-params.cash_and_equivalents
+    Returns:
+      {
+        "WACC": DataFrame(columns=["EV","Equity","PS"]),
+        "APV" : DataFrame(columns=["EV","Equity","PS"])
+      }
+    """
+    # Initialize storage
+    results: Dict[str, list] = {"WACC": [], "APV": []}
 
-    for m in methods:
-        evs = np.array([
-            single_ev(params,m,
-                      beta_override=betas[i],
-                      cd_override=cds[i],
-                      g_exp_override=g_exps[i],
-                      g_term_override=g_terms[i],
-                      dv_override=dvs[i])
-            for i in range(runs)
-        ])
-        prices=(evs-net_debt)/params.shares_outstanding
-        ev_store[m]=evs
-        summary.append({
-            'Method':m,
-            'EV Mean ($B)':evs.mean()/1e9,
-            'Price Mean ($)':prices.mean(),
-            'Price P5':np.percentile(prices,5),
-            'Price P95':np.percentile(prices,95)
-        })
-    return pd.DataFrame(summary), ev_store
+    # Simulation loop
+    for _ in range(runs):
+        # Copy base params for sampling
+        sampled = copy.deepcopy(params)
+
+        # Sample each variable per spec
+        for name, spec in params.variable_specs.items():
+            dist = spec.get("dist")
+            p = spec.get("params", {})
+            if dist == "normal":
+                sampled_val = np.random.normal(loc=p.get("loc"), scale=p.get("scale"))
+            elif dist == "uniform":
+                sampled_val = np.random.uniform(low=p.get("low"), high=p.get("high"))
+            else:
+                raise ValueError(f"Unsupported distribution type '{dist}' for variable '{name}'")
+            setattr(sampled, name, sampled_val)
+
+        # WACC-based DCF
+        ev_w, eq_w, ps_w = calc_dcf_series(sampled)
+        results["WACC"].append({"EV": ev_w, "Equity": eq_w, "PS": ps_w})
+
+        # APV valuation
+        ev_a, eq_a, ps_a = calc_apv(sampled)
+        results["APV"].append({"EV": ev_a, "Equity": eq_a, "PS": ps_a})
+
+    # Convert lists of dicts to DataFrames
+    return {
+        method: pd.DataFrame(records)
+        for method, records in results.items()
+    }

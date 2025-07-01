@@ -1,37 +1,36 @@
+# params.py
+
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Dict, List, Any
 
 @dataclass
 class ValuationParams:
-    # Core inputs
-    risk_free_rate: float = 0.02
-    market_risk_premium: float = 0.06
-    cost_of_debt: float = 0.04
-    tax_rate: float = 0.21
-    total_debt: float = 100e9
-    cash_and_equivalents: float = 50e9
-    shares_outstanding: float = 5e9
+    # ---- Driver-based inputs ----
+    revenue: List[float] = field(default_factory=list)
+    ebit_margin: float = 0.0
+    capex: List[float] = field(default_factory=list)
+    depreciation: List[float] = field(default_factory=list)
+    nwc_changes: List[float] = field(default_factory=list)
 
-    # Forecast settings
-    n: int = 5
-    target_debt_ratio: float = 0.25
-    mid_year_discount: bool = True
+    # ---- Direct FCF override ----
+    fcf_series: List[float] = field(default_factory=list)
 
-    # FCF inputs
-    fcf_input_mode: str = 'AUTO'               # 'AUTO' or 'LIST'
-    FCF_0: float = 10e9
-    g_exp: float = 0.08
-    g_term: float = 0.02
-    fcf_list: List[float] = field(default_factory=lambda: [
-        10e9, 10e9 * 1.08, 10e9 * 1.08**2, 10e9 * 1.08**3, 10e9 * 1.08**4
-    ])
+    # ---- Terminal & discount assumptions ----
+    terminal_growth: float = 0.0
+    wacc: float = 0.0
+    tax_rate: float = 0.0
 
-    # Peer multiples
-    multiples_input: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        'MSFT':  {'EV/EBITDA': 20.0, 'EV/Revenue': 8.0,  'P/E': 25.0},
-        'GOOGL': {'EV/EBITDA': 18.0, 'EV/Revenue': 7.0,  'P/E': 23.0},
-        'AMZN':  {'EV/EBITDA': 50.0, 'EV/Revenue': 3.0,  'P/E': 60.0},
-    })
-    LTM_EBITDA: float = 60e9
-    LTM_Revenue: float = 300e9
-    LTM_EPS: float = 6.0
+    # ---- Capital structure & shares ----
+    share_count: float = 1.0
+    cost_of_debt: float = 0.0
+    debt_schedule: Dict[int, float] = field(default_factory=dict)
+
+    # ---- Monte Carlo specs ----
+    variable_specs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    # ---- Peer multiples metadata ----
+    multiples_input: Dict[str, Any] = field(default_factory=dict)
+
+    # ---- Scenarios & Sensitivity ranges ----
+    scenarios: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    sensitivity_ranges: Dict[str, List[float]] = field(default_factory=dict)

@@ -1,83 +1,81 @@
+# valuation.py
+
+from typing import Tuple, Optional
 import numpy as np
-from typing import List, Optional
+
+from drivers import project_ebit, project_fcf
 from params import ValuationParams
 
-# -- Forecasting --
-def forecast_fcfs(FCF0: float, growth: float, periods: int) -> List[float]:
-    return [FCF0 * (1 + growth)**t for t in range(1, periods+1)]
+def calc_dcf_series(params: ValuationParams) -> Tuple[float, float, Optional[float]]:
+    """
+    DCF that supports either:
+      • Direct FCF series (if params.fcf_series non-empty)
+      • Driver-based projection otherwise
+    Returns (EV, EquityValue, PricePerShare or None).
+    """
+    # 1) Determine FCF series
+    if params.fcf_series:
+        fcfs = params.fcf_series
+    else:
+        # project revenue → ebit → fcf
+        # assume params.revenue is full revenue forecast
+        ebits = project_ebit(params.revenue, params.ebit_margin)
+        fcfs = project_fcf(
+            params.revenue,
+            ebits,
+            params.capex,
+            params.depreciation,
+            params.nwc_changes,
+            params.tax_rate
+        )
 
-def prepare_fcfs(params: ValuationParams, g_exp: float) -> List[float]:
-    if params.fcf_input_mode == 'AUTO':
-        return forecast_fcfs(params.FCF_0, g_exp, params.n)
-    if len(params.fcf_list) != params.n:
-        raise ValueError(f"Expected {params.n} FCF items, got {len(params.fcf_list)}")
-    return params.fcf_list
+    # 2) Discount each FCF (year-end)
+    discount_factors = [(1 + params.wacc) ** (i + 1) for i in range(len(fcfs))]
+    pv_fcfs = [f / df for f, df in zip(fcfs, discount_factors)]
 
-# -- Discounting & Terminal Value --
-def discount_cash_flows(cfs: List[float], rate: float, mid_year: bool) -> float:
-    return sum(cf / (1+rate)**((i+1)-(0.5 if mid_year else 0))
-               for i, cf in enumerate(cfs))
+    # 3) Terminal value via Gordon growth
+    last_fcf = fcfs[-1]
+    tv = last_fcf * (1 + params.terminal_growth) / (params.wacc - params.terminal_growth)
+    pv_tv = tv / ((1 + params.wacc) ** len(fcfs))
 
-def calculate_terminal_value(last_cf: float, growth: float, rate: float) -> float:
-    return last_cf * (1+growth) / (rate - growth)
+    # 4) Enterprise value
+    ev = sum(pv_fcfs) + pv_tv
 
-def discount_terminal_value(tv: float, rate: float, periods: int, mid_year: bool) -> float:
-    return tv / (1+rate)**(periods - (0.5 if mid_year else 0))
+    # 5) Subtract net debt at t=0
+    net_debt = params.debt_schedule.get(0, 0.0)
+    equity = ev - net_debt
 
-# -- Core Models --
-def calculate_wacc(ce: float, cd: float, tr: float, dv: float) -> float:
-    return ce*(1-dv) + cd*(1-tr)*dv
+    # 6) Price per share
+    ps = equity / params.share_count if params.share_count else None
 
-def calculate_apv(params: ValuationParams,
-                  ce: float, cd: float,
-                  fcf: List[float], g_term: float) -> float:
-    pv_unlev = discount_cash_flows(fcf, ce, params.mid_year_discount)
-    tv_unlev = calculate_terminal_value(fcf[-1], g_term, ce)
-    pv_tv_unlev = discount_terminal_value(tv_unlev, ce, params.n, params.mid_year_discount)
+    return ev, equity, ps
 
-    annual_shield = params.total_debt * cd * params.tax_rate
-    pv_shields = sum(
-        annual_shield/(1+cd)**((t+1)-(0.5 if params.mid_year_discount else 0))
-        for t in range(params.n)
-    )
-    return pv_unlev + pv_tv_unlev + pv_shields
 
-def single_ev(params: ValuationParams,
-              method: str,
-              beta_override: Optional[float]=None,
-              cd_override: Optional[float]=None,
-              g_exp_override: Optional[float]=None,
-              g_term_override: Optional[float]=None,
-              dv_override: Optional[float]=None,
-              re_override: Optional[float]=None) -> float:
-    beta = beta_override or 1.1
-    cd = cd_override or params.cost_of_debt
-    g_exp = g_exp_override or params.g_exp
-    g_term = g_term_override or params.g_term
-    dv = dv_override or params.target_debt_ratio
-    ce = re_override if re_override is not None else (
-        params.risk_free_rate + beta*params.market_risk_premium
-    )
+def calc_apv(params: ValuationParams) -> Tuple[float, float, Optional[float]]:
+    """
+    APV:
+      1) All-equity DCF (zero out debt)
+      2) PV of interest tax shields on the debt schedule
+      3) Sum → levered EV; subtract net debt → equity; divide by shares
+    """
+    # 1) Base all-equity DCF
+    zero_debt = params.debt_schedule.copy()
+    base_params = ValuationParams(**vars(params), debt_schedule={})
+    ev_unlevered, _, _ = calc_dcf_series(base_params)
 
-    fcf = prepare_fcfs(params, g_exp)
-    if method.upper()=='WACC':
-        wacc = calculate_wacc(ce, cd, params.tax_rate, dv)
-        pv_fcf = discount_cash_flows(fcf, wacc, params.mid_year_discount)
-        tv = calculate_terminal_value(fcf[-1], g_term, wacc)
-        pv_tv = discount_terminal_value(tv, wacc, params.n, params.mid_year_discount)
-        return pv_fcf + pv_tv
-    return calculate_apv(params, ce, cd, fcf, g_term)
+    # 2) PV of tax shields
+    cod = params.cost_of_debt or params.wacc
+    shields_pv = 0.0
+    for year, debt in params.debt_schedule.items():
+        interest = debt * cod
+        shield = interest * params.tax_rate
+        shields_pv += shield / ((1 + params.wacc) ** year)
 
-# -- Batch Valuation --
-def run_single_valuations(params: ValuationParams, methods: List[str]):
-    net_debt = params.total_debt - params.cash_and_equivalents
-    import pandas as pd
-    rows=[]
-    for m in methods:
-        ev = single_ev(params, m)
-        eq = ev - net_debt
-        rows.append({'Method': m,
-                     'EV ($B)':ev/1e9,
-                     'Equity ($B)':eq/1e9,
-                     'Share Price':eq/params.shares_outstanding})
-    return pd.DataFrame(rows)
+    ev_apv = ev_unlevered + shields_pv
+
+    # 3) Equity & PS
+    net_debt = params.debt_schedule.get(0, 0.0)
+    equity_apv = ev_apv - net_debt
+    ps_apv = equity_apv / params.share_count if params.share_count else None
+
+    return ev_apv, equity_apv, ps_apv
