@@ -5,10 +5,15 @@ This module contains basic tests to validate core functionality
 and ensure the application works correctly.
 """
 
+import sys
+import os
 import pytest
 import pandas as pd
 import numpy as np
 from unittest.mock import Mock
+
+# Add the parent directory to the Python path so we can import our modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the modules to test
 from params import ValuationParams
@@ -157,6 +162,9 @@ class TestMonteCarlo:
         assert "APV" in results
         assert len(results["WACC"]) == 10
         assert len(results["APV"]) == 10
+        assert "EV" in results["WACC"].columns
+        assert "Equity" in results["WACC"].columns
+        assert "PS" in results["WACC"].columns
 
 class TestMultiples:
     """Test comparable multiples analysis"""
