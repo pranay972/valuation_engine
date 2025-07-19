@@ -14,6 +14,11 @@ import json
 from datetime import datetime
 import io
 
+# Visualization - use matplotlib as primary
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for deployment
+
 # Optional imports for enhanced visualization
 try:
     import plotly.graph_objects as go
@@ -21,7 +26,15 @@ try:
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.warning("Plotly not available. Using basic charts.")
+    # No warning needed since matplotlib is primary
+
+# Optional Excel export functionality
+try:
+    from openpyxl import Workbook
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+    st.warning("Excel export not available. CSV download only.")
 
 from params import ValuationParams
 from valuation import calc_dcf_series, calc_apv
@@ -694,7 +707,6 @@ def display_results(results: dict, params: ValuationParams):
                         st.plotly_chart(fig, use_container_width=True)
                     else:
                         # Fallback to matplotlib
-                        import matplotlib.pyplot as plt
                         fig, ax = plt.subplots()
                         ax.hist(wacc_df["EV"], bins=30)
                         ax.set_title("Enterprise Value Distribution (WACC DCF)")
@@ -759,7 +771,6 @@ def display_results(results: dict, params: ValuationParams):
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     # Fallback to matplotlib
-                    import matplotlib.pyplot as plt
                     fig, ax = plt.subplots()
                     ax.bar(scen_df.index, scen_df["EV"], color='lightblue')
                     ax.set_title("Enterprise Value by Scenario")
@@ -786,7 +797,6 @@ def display_results(results: dict, params: ValuationParams):
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     # Fallback to matplotlib
-                    import matplotlib.pyplot as plt
                     fig, ax = plt.subplots()
                     im = ax.imshow(sens_df.T, aspect='auto', cmap='viridis')
                     ax.set_title("Sensitivity Heatmap")
@@ -820,12 +830,11 @@ def display_results(results: dict, params: ValuationParams):
         download_data["sensitivity"] = results["sensitivity"]
     
     # Create Excel file
-    if download_data:
+    if OPENPYXL_AVAILABLE and download_data:
         # Create a temporary file-like object
         buffer = io.BytesIO()
         
         # Write to Excel using openpyxl directly
-        from openpyxl import Workbook
         wb = Workbook()
         
         # Remove default sheet
@@ -856,6 +865,8 @@ def display_results(results: dict, params: ValuationParams):
             file_name=f"valuation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    elif download_data and not OPENPYXL_AVAILABLE:
+        st.warning("Excel export not available. Use CSV download instead.")
     
     # Create CSV summary
     if summary_data:
