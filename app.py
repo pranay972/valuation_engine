@@ -14,10 +14,15 @@ import json
 from datetime import datetime
 import io
 
-# Visualization - use matplotlib as primary
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for deployment
+# Visualization - use matplotlib as primary with error handling
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend for deployment
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    st.warning("Matplotlib not available. Charts will be limited.")
 
 # Optional imports for enhanced visualization
 try:
@@ -705,7 +710,7 @@ def display_results(results: dict, params: ValuationParams):
                         )
                         fig.update_layout(showlegend=False)
                         st.plotly_chart(fig, use_container_width=True)
-                    else:
+                    elif MATPLOTLIB_AVAILABLE:
                         # Fallback to matplotlib
                         fig, ax = plt.subplots()
                         ax.hist(wacc_df["EV"], bins=30)
@@ -713,6 +718,8 @@ def display_results(results: dict, params: ValuationParams):
                         ax.set_xlabel("Enterprise Value ($)")
                         ax.set_ylabel("Frequency")
                         st.pyplot(fig)
+                    else:
+                        st.warning("No visualization library available. Please view the data table above.")
                 
                 # Confidence intervals
                 st.write("**Confidence Intervals**")
@@ -769,7 +776,7 @@ def display_results(results: dict, params: ValuationParams):
                         showlegend=False
                     )
                     st.plotly_chart(fig, use_container_width=True)
-                else:
+                elif MATPLOTLIB_AVAILABLE:
                     # Fallback to matplotlib
                     fig, ax = plt.subplots()
                     ax.bar(scen_df.index, scen_df["EV"], color='lightblue')
@@ -778,6 +785,8 @@ def display_results(results: dict, params: ValuationParams):
                     ax.set_ylabel("Enterprise Value ($)")
                     plt.xticks(rotation=45)
                     st.pyplot(fig)
+                else:
+                    st.warning("No visualization library available. Please view the data table above.")
     
     # Sensitivity Analysis
     if "sensitivity" in results:
@@ -795,7 +804,7 @@ def display_results(results: dict, params: ValuationParams):
                         aspect="auto"
                     )
                     st.plotly_chart(fig, use_container_width=True)
-                else:
+                elif MATPLOTLIB_AVAILABLE:
                     # Fallback to matplotlib
                     fig, ax = plt.subplots()
                     im = ax.imshow(sens_df.T, aspect='auto', cmap='viridis')
@@ -804,6 +813,8 @@ def display_results(results: dict, params: ValuationParams):
                     ax.set_ylabel("Parameters")
                     plt.colorbar(im, ax=ax, label="Enterprise Value ($)")
                     st.pyplot(fig)
+                else:
+                    st.warning("No visualization library available. Please view the data table above.")
     
     # Download functionality
     st.subheader("Download Results")
