@@ -1,0 +1,16 @@
+# Financial Valuation App - Minimal Production Dependencies
+# Essential packages for deployment (no development tools)
+
+# Core framework
+streamlit==1.45.1
+
+# Data processing
+pandas==2.3.0
+numpy==2.0.2
+
+# Visualization
+plotly==6.2.0
+matplotlib==3.9.4
+
+# Excel export functionality
+openpyxl==3.1.5 
