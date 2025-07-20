@@ -24,8 +24,8 @@ def run_api():
     
     # Install API dependencies if needed
     try:
-        subprocess.run(["python3", "-m", "pip", "install", "-r", "requirements.txt"], 
-                      check=True, capture_output=True)
+        # Use Poetry to install dependencies from pyproject.toml
+        subprocess.run(["poetry", "install"], cwd=".", check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to install API dependencies: {e}")
         return None

@@ -82,7 +82,7 @@ class ValuationResponse(BaseModel):
 async def root():
     return {"message": "Financial Valuation API is running"}
 
-@app.post("/api/valuate", response_model=ValuationResponse)
+@app.post("/api/valuation", response_model=ValuationResponse)
 async def run_valuation(request: ValuationRequest):
     """Run valuation analysis based on provided parameters"""
     try:
