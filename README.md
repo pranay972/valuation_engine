@@ -1,6 +1,6 @@
 # Financial Valuation Engine
 
-A comprehensive, professional-grade financial valuation application built with Streamlit. This tool provides enterprise-level DCF valuation, Monte Carlo simulation, comparable multiples analysis, and scenario testing - all with an intuitive, finance-professional-friendly interface.
+A comprehensive, professional-grade financial valuation application built with FastAPI backend and React frontend. This tool provides enterprise-level DCF valuation, Monte Carlo simulation, comparable multiples analysis, and scenario testing - all with an intuitive, finance-professional-friendly interface.
 
 ## Features
 
@@ -34,13 +34,20 @@ A comprehensive, professional-grade financial valuation application built with S
 
 ### **Dependencies**
 ```
-streamlit>=1.28.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
 pandas>=1.5.0
 numpy>=1.21.0
 matplotlib>=3.5.0
 plotly>=5.0.0
 openpyxl>=3.0.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
 ```
+
+### **Frontend Requirements**
+- Node.js 16 or higher
+- npm or yarn package manager
 
 ## Installation
 
@@ -50,11 +57,16 @@ openpyxl>=3.0.0
 git clone <repository-url>
 cd valuation
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Run the app
-streamlit run app.py
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Start both services
+python start_app.py
 ```
 
 ### **Option 2: Virtual Environment (Recommended)**
@@ -68,32 +80,45 @@ python -m venv .venv
 # On macOS/Linux:
 source .venv/bin/activate
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Run the app
-streamlit run app.py
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Start both services
+python start_app.py
 ```
 
 ### **Option 3: Minimal Installation**
 ```bash
-# Install only essential dependencies
+# Install only essential Python dependencies
 pip install -r requirements-minimal.txt
 
-# Run the app
-streamlit run app.py
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Start both services
+python start_app.py
 ```
 
 ## Quick Start Guide
 
 ### **1. Launch the App**
 ```bash
-streamlit run app.py
+python start_app.py
 ```
-The app will open in your browser at `http://localhost:8501`
+This will start both the FastAPI backend and React frontend:
+- **API**: http://localhost:8000
+- **Frontend**: http://localhost:3000
+- **API Documentation**: http://localhost:8000/docs
 
 ### **2. Select Analyses**
-In the sidebar, choose which valuation methods to run:
+In the frontend interface, choose which valuation methods to run:
 - ✅ **WACC DCF** (recommended for most cases)
 - ✅ **APV DCF** (for companies with significant debt)
 - ✅ **Monte Carlo** (for uncertainty analysis)
@@ -101,7 +126,7 @@ In the sidebar, choose which valuation methods to run:
 - ✅ **Scenario Analysis** (for sensitivity testing)
 
 ### **3. Enter Financial Data**
-Use the **Financial Projections** tab to input your data:
+Use the **Financial Projections** section to input your data:
 
 #### **Driver-Based Input (Recommended)**
 - **Revenue Series**: Enter projected revenues (e.g., `100000000,110000000,120000000`)

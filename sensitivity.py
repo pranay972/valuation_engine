@@ -41,6 +41,8 @@ def run_sensitivity_analysis(params: ValuationParams) -> pd.DataFrame:
         ValueError: If sensitivity ranges contain invalid parameters
         ValueError: If any parameter range is empty
     """
+    print(f"Sensitivity ranges received: {params.sensitivity_ranges}")
+    
     if not params.sensitivity_ranges:
         raise ValueError("No sensitivity ranges defined in params.sensitivity_ranges")
     

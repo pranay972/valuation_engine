@@ -18,7 +18,14 @@ import pandas as pd
 
 from params import ValuationParams
 from valuation import calc_dcf_series, calc_apv
+from exceptions import MonteCarloError, InvalidInputError
+from validation import validate_monte_carlo_specs
+from logging_config import get_logger
+from cache import cached_with_params
 
+logger = get_logger(__name__)
+
+@cached_with_params(max_size=32, ttl_seconds=1800)
 def run_monte_carlo(
     params: ValuationParams,
     runs: int = 2000,
@@ -36,6 +43,7 @@ def run_monte_carlo(
     Args:
         params: ValuationParams object with base inputs and variable_specs
         runs: Number of Monte Carlo iterations (default: 2000)
+        random_seed: Random seed for reproducibility
         
     Returns:
         Dictionary with DataFrames keyed by method:
@@ -45,44 +53,34 @@ def run_monte_carlo(
         }
         
     Raises:
-        ValueError: If runs is less than 1
-        ValueError: If variable_specs contains unsupported distribution types
-        ValueError: If required distribution parameters are missing
+        MonteCarloError: If runs is less than 1
+        InvalidInputError: If variable_specs contains unsupported distribution types
+        InvalidInputError: If required distribution parameters are missing
     """
+    logger.debug(f"Starting Monte Carlo simulation with {runs} runs")
+    
     # Validate inputs
     if runs < 1:
-        raise ValueError(f"Number of runs ({runs}) must be at least 1")
+        raise MonteCarloError(f"Number of runs ({runs}) must be at least 1")
     
     if not params.variable_specs:
-        raise ValueError("No variable specifications provided for Monte Carlo simulation")
+        raise InvalidInputError("No variable specifications provided for Monte Carlo simulation")
+    
+    # Validate variable specifications
+    try:
+        validate_monte_carlo_specs(params.variable_specs)
+    except InvalidInputError as e:
+        logger.error(f"Invalid Monte Carlo specifications: {str(e)}")
+        raise
     
     # Set random seed for reproducibility
     if random_seed is not None:
         np.random.seed(random_seed)
     
     # Initialize storage
-    results: Dict[str, List[Dict[str, float]]] = {"WACC": [], "APV": []}
+    results: Dict[str, List[Dict[str, Optional[float]]]] = {"WACC": [], "APV": []}
     
-    # Validate variable specifications
-    for var_name, spec in params.variable_specs.items():
-        if not isinstance(spec, dict):
-            raise ValueError(f"Variable specification for '{var_name}' must be a dictionary")
-        
-        dist_type = spec.get("dist")
-        if dist_type not in ["normal", "uniform"]:
-            raise ValueError(f"Unsupported distribution type '{dist_type}' for variable '{var_name}'")
-        
-        params_dict = spec.get("params", {})
-        if dist_type == "normal":
-            if "loc" not in params_dict or "scale" not in params_dict:
-                raise ValueError(f"Normal distribution for '{var_name}' requires 'loc' and 'scale' parameters")
-            if params_dict["scale"] <= 0:
-                raise ValueError(f"Scale parameter for '{var_name}' must be positive")
-        elif dist_type == "uniform":
-            if "low" not in params_dict or "high" not in params_dict:
-                raise ValueError(f"Uniform distribution for '{var_name}' requires 'low' and 'high' parameters")
-            if params_dict["low"] >= params_dict["high"]:
-                raise ValueError(f"Low parameter must be less than high parameter for '{var_name}'")
+    # Set random seed for reproducibility
     
     # Pre-generate all random samples for efficiency
     samples = {}
@@ -104,6 +102,8 @@ def run_monte_carlo(
             )
     
     # Simulation loop
+    successful_runs = {"WACC": 0, "APV": 0}
+    
     for i in range(runs):
         try:
             # Create shallow copy and only override sampled variables
@@ -121,45 +121,78 @@ def run_monte_carlo(
                 if hasattr(sampled, name):
                     setattr(sampled, name, samples[name][i])
                 else:
-                    raise ValueError(f"Variable '{name}' not found in ValuationParams")
+                    raise MonteCarloError(
+                        f"Variable '{name}' not found in ValuationParams",
+                        iteration=i,
+                        variable=name
+                    )
             
             # Run WACC-based DCF
             try:
                 ev_w, eq_w, ps_w = calc_dcf_series(sampled)
+                # Validate results to prevent infinite values
+                if not (np.isfinite(ev_w) and np.isfinite(eq_w)):
+                    raise MonteCarloError(
+                        "Invalid valuation results (infinite or NaN values)",
+                        iteration=i
+                    )
+                
                 results["WACC"].append({
-                    "EV": ev_w, 
-                    "Equity": eq_w, 
-                    "PS": ps_w if ps_w is not None else np.nan
+                    "EV": float(ev_w), 
+                    "Equity": float(eq_w), 
+                    "PS": float(ps_w) if ps_w is not None and np.isfinite(ps_w) else None
                 })
+                successful_runs["WACC"] += 1
             except Exception as e:
                 # Log failed WACC calculation but continue
-                print(f"WACC DCF failed in iteration {i}: {str(e)}")
-                results["WACC"].append({"EV": np.nan, "Equity": np.nan, "PS": np.nan})
+                logger.warning(f"WACC DCF failed in iteration {i}: {str(e)}")
+                results["WACC"].append({"EV": None, "Equity": None, "PS": None})
             
             # Run APV valuation
             try:
                 ev_a, eq_a, ps_a = calc_apv(sampled)
+                # Validate results to prevent infinite values
+                if not (np.isfinite(ev_a) and np.isfinite(eq_a)):
+                    raise MonteCarloError(
+                        "Invalid valuation results (infinite or NaN values)",
+                        iteration=i
+                    )
+                
                 results["APV"].append({
-                    "EV": ev_a, 
-                    "Equity": eq_a, 
-                    "PS": ps_a if ps_a is not None else np.nan
+                    "EV": float(ev_a), 
+                    "Equity": float(eq_a), 
+                    "PS": float(ps_a) if ps_a is not None and np.isfinite(ps_a) else None
                 })
+                successful_runs["APV"] += 1
             except Exception as e:
                 # Log failed APV calculation but continue
-                print(f"APV failed in iteration {i}: {str(e)}")
-                results["APV"].append({"EV": np.nan, "Equity": np.nan, "PS": np.nan})
+                logger.warning(f"APV failed in iteration {i}: {str(e)}")
+                results["APV"].append({"EV": None, "Equity": None, "PS": None})
                 
         except Exception as e:
-            print(f"Monte Carlo iteration {i} failed: {str(e)}")
-            # Add NaN results for failed iterations
-            results["WACC"].append({"EV": np.nan, "Equity": np.nan, "PS": np.nan})
-            results["APV"].append({"EV": np.nan, "Equity": np.nan, "PS": np.nan})
+            logger.error(f"Monte Carlo iteration {i} failed: {str(e)}")
+            # Add None results for failed iterations
+            results["WACC"].append({"EV": None, "Equity": None, "PS": None})
+            results["APV"].append({"EV": None, "Equity": None, "PS": None})
     
-    # Convert lists of dicts to DataFrames
-    return {
-        method: pd.DataFrame(records) if records else pd.DataFrame(columns=pd.Index(["EV", "Equity", "PS"]))
-        for method, records in results.items()
-    }
+    # Log simulation results
+    logger.info(f"Monte Carlo simulation completed. Successful runs - WACC: {successful_runs['WACC']}/{runs}, APV: {successful_runs['APV']}/{runs}")
+    
+    # Convert lists of dicts to DataFrames, handling None values
+    result_dfs = {}
+    for method, records in results.items():
+        if records:
+            # Filter out None values and create DataFrame
+            valid_records = [r for r in records if r["EV"] is not None and r["Equity"] is not None]
+            if valid_records:
+                result_dfs[method] = pd.DataFrame(valid_records)
+            else:
+                # If no valid records, create empty DataFrame with proper structure
+                result_dfs[method] = pd.DataFrame(columns=pd.Index(["EV", "Equity", "PS"]))
+        else:
+            result_dfs[method] = pd.DataFrame(columns=pd.Index(["EV", "Equity", "PS"]))
+    
+    return result_dfs
 
 def get_monte_carlo_statistics(results: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, float]]:
     """

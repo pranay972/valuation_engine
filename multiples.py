@@ -74,6 +74,11 @@ def run_multiples_analysis(
         "Revenue": revenues[-1]
     }
     
+    print(f"Calculated metrics: {metric_map}")
+    print(f"Last year EBIT: {ebits[-1]}")
+    print(f"Last year FCF: {fcfs[-1] if fcfs else 'No FCF'}")
+    print(f"Last year Revenue: {revenues[-1]}")
+    
     # Validate that we have meaningful metrics
     if all(value <= 0 for value in metric_map.values()):
         raise ValueError("All calculated financial metrics are non-positive")

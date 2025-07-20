@@ -1,8 +1,9 @@
 # Financial Valuation App - Core Dependencies
-# Essential packages for the Streamlit-based valuation engine
+# Essential packages for the FastAPI-based valuation engine
 
 # Core framework
-streamlit==1.45.1
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 
 # Data processing
 pandas==2.3.0
@@ -15,10 +16,9 @@ matplotlib==3.9.4
 # Excel export functionality
 openpyxl==3.1.5
 
-# Streamlit ecosystem (auto-installed but listed for clarity)
-altair==5.5.0
-pydeck==0.9.1
-pyarrow==20.0.0
+# API and web framework
+pydantic==2.5.0
+python-multipart==0.0.6
 
 # Development and testing (optional)
 pytest==8.4.0

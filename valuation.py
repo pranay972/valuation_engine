@@ -13,7 +13,14 @@ import numpy as np
 
 from drivers import project_ebit, project_fcf
 from params import ValuationParams
+from exceptions import CalculationError, InvalidInputError, DataValidationError
+from validation import validate_financial_data, validate_valuation_params
+from logging_config import get_logger
+from cache import cached
 
+logger = get_logger(__name__)
+
+@cached
 def calc_dcf_series(params: ValuationParams) -> Tuple[float, float, Optional[float]]:
     """
     Calculate DCF valuation using the WACC method.
@@ -30,76 +37,107 @@ def calc_dcf_series(params: ValuationParams) -> Tuple[float, float, Optional[flo
         Price per Share will be None if share_count is not provided
         
     Raises:
-        ValueError: If terminal growth >= WACC (Gordon growth model constraint)
-        ValueError: If no FCF series can be calculated
+        CalculationError: If terminal growth >= WACC (Gordon growth model constraint)
+        CalculationError: If no FCF series can be calculated
+        InvalidInputError: If input parameters are invalid
     """
-    # Validate terminal growth constraint
-    if params.terminal_growth >= params.wacc:
-        raise ValueError(
-            f"Terminal growth rate ({params.terminal_growth:.1%}) must be less than WACC ({params.wacc:.1%}) "
-            "for Gordon growth model to be valid"
-        )
+    logger.debug(f"Starting DCF calculation with WACC: {params.wacc:.1%}, terminal growth: {params.terminal_growth:.1%}")
     
-    # Additional terminal value sanity checks (warnings will be handled in app.py)
-    if params.terminal_growth > 0.05:  # 5% growth
-        pass  # Warning will be shown in UI
-    if params.terminal_growth < -0.02:  # -2% growth
-        pass  # Warning will be shown in UI
-    
-    # 1) Determine FCF series
-    if params.fcf_series:
-        fcfs = params.fcf_series
-    else:
-        # Validate that we have all required inputs for driver-based projection
-        if not params.revenue or not params.capex or not params.depreciation or not params.nwc_changes:
-            raise ValueError("No FCF series available for valuation")
+    try:
+        # Validate input parameters
+        validate_valuation_params({
+            "wacc": params.wacc,
+            "terminal_growth": params.terminal_growth,
+            "tax_rate": params.tax_rate
+        })
         
-        # Project revenue → EBIT → FCF
-        ebits = project_ebit(params.revenue, params.ebit_margin)
-        fcfs = project_fcf(
-            params.revenue,
-            ebits,
-            params.capex,
-            params.depreciation,
-            params.nwc_changes,
-            params.tax_rate
-        )
+        # Validate terminal growth constraint
+        if params.terminal_growth >= params.wacc:
+            raise CalculationError(
+                f"Terminal growth rate ({params.terminal_growth:.1%}) must be less than WACC ({params.wacc:.1%}) "
+                "for Gordon growth model to be valid",
+                calculation_type="DCF",
+                params={"wacc": params.wacc, "terminal_growth": params.terminal_growth}
+            )
     
-    if not fcfs:
-        raise ValueError("No FCF series available for valuation")
+        # Additional terminal value sanity checks (warnings will be handled in app.py)
+        if params.terminal_growth > 0.05:  # 5% growth
+            logger.warning(f"High terminal growth rate: {params.terminal_growth:.1%}")
+        if params.terminal_growth < -0.02:  # -2% growth
+            logger.warning(f"Low terminal growth rate: {params.terminal_growth:.1%}")
+        
+        # 1) Determine FCF series
+        if params.fcf_series:
+            validate_financial_data(params.fcf_series, "fcf_series")
+            fcfs = params.fcf_series
+        else:
+            # Validate that we have all required inputs for driver-based projection
+            if not params.revenue or not params.capex or not params.depreciation or not params.nwc_changes:
+                raise CalculationError(
+                    "No FCF series available for valuation. Please provide either fcf_series or all driver-based inputs.",
+                    calculation_type="DCF"
+                )
+            
+            # Validate financial data
+            validate_financial_data(params.revenue, "revenue")
+            validate_financial_data(params.capex, "capex")
+            validate_financial_data(params.depreciation, "depreciation")
+            validate_financial_data(params.nwc_changes, "nwc_changes")
+            
+            # Project revenue → EBIT → FCF
+            ebits = project_ebit(params.revenue, params.ebit_margin)
+            fcfs = project_fcf(
+                params.revenue,
+                ebits,
+                params.capex,
+                params.depreciation,
+                params.nwc_changes,
+                params.tax_rate
+            )
+        
+        if not fcfs:
+            raise CalculationError(
+                "No FCF series available for valuation",
+                calculation_type="DCF"
+            )
     
-    # 2) Discount each FCF
-    if params.mid_year_convention:
-        # Mid-year convention: cash flows occur at middle of year
-        discount_factors = [(1 + params.wacc) ** (i + 0.5) for i in range(len(fcfs))]
-    else:
-        # Year-end convention: cash flows occur at end of year
-        discount_factors = [(1 + params.wacc) ** (i + 1) for i in range(len(fcfs))]
-    
-    pv_fcfs = [f / df for f, df in zip(fcfs, discount_factors)]
+        # 2) Discount each FCF
+        if params.mid_year_convention:
+            # Mid-year convention: cash flows occur at middle of year
+            discount_factors = [(1 + params.wacc) ** (i + 0.5) for i in range(len(fcfs))]
+        else:
+            # Year-end convention: cash flows occur at end of year
+            discount_factors = [(1 + params.wacc) ** (i + 1) for i in range(len(fcfs))]
+        
+        pv_fcfs = [f / df for f, df in zip(fcfs, discount_factors)]
 
-    # 3) Terminal value via Gordon growth model
-    last_fcf = fcfs[-1]
-    tv = last_fcf * (1 + params.terminal_growth) / (params.wacc - params.terminal_growth)
-    
-    if params.mid_year_convention:
-        # Terminal value starts at middle of year after last forecast
-        pv_tv = tv / ((1 + params.wacc) ** (len(fcfs) + 0.5))
-    else:
-        # Terminal value starts at end of year after last forecast
-        pv_tv = tv / ((1 + params.wacc) ** (len(fcfs) + 1))
+        # 3) Terminal value via Gordon growth model
+        last_fcf = fcfs[-1]
+        tv = last_fcf * (1 + params.terminal_growth) / (params.wacc - params.terminal_growth)
+        
+        if params.mid_year_convention:
+            # Terminal value starts at middle of year after last forecast
+            pv_tv = tv / ((1 + params.wacc) ** (len(fcfs) + 0.5))
+        else:
+            # Terminal value starts at end of year after last forecast
+            pv_tv = tv / ((1 + params.wacc) ** (len(fcfs) + 1))
 
-    # 4) Enterprise value = PV of FCFs + PV of terminal value
-    ev = sum(pv_fcfs) + pv_tv
+        # 4) Enterprise value = PV of FCFs + PV of terminal value
+        ev = sum(pv_fcfs) + pv_tv
 
-    # 5) Equity value = Enterprise value - Net debt
-    net_debt = params.debt_schedule.get(0, 0.0)
-    equity = ev - net_debt
+        # 5) Equity value = Enterprise value - Net debt
+        net_debt = params.debt_schedule.get(0, 0.0)
+        equity = ev - net_debt
 
-    # 6) Price per share = Equity value / Number of shares
-    ps = equity / params.share_count if params.share_count and params.share_count > 0 else None
+        # 6) Price per share = Equity value / Number of shares
+        ps = equity / params.share_count if params.share_count and params.share_count > 0 else None
 
-    return ev, equity, ps
+        logger.debug(f"DCF calculation completed - EV: ${ev:,.0f}, Equity: ${equity:,.0f}")
+        return ev, equity, ps
+        
+    except Exception as e:
+        logger.error(f"DCF calculation failed: {str(e)}")
+        raise
 
 
 def calc_apv(params: ValuationParams) -> Tuple[float, float, Optional[float]]:
