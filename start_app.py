@@ -15,14 +15,16 @@ from pathlib import Path
 def run_api():
     """Run the FastAPI backend"""
     print("🚀 Starting FastAPI backend...")
-    api_dir = Path("api")
-    if not api_dir.exists():
-        print("❌ API directory not found!")
+    
+    # Check if backend directory exists
+    backend_dir = Path("backend")
+    if not backend_dir.exists():
+        print("❌ Backend directory not found!")
         return None
     
     # Install API dependencies if needed
     try:
-        subprocess.run(["python3", "-m", "pip", "install", "-r", "api/requirements.txt"], 
+        subprocess.run(["python3", "-m", "pip", "install", "-r", "requirements.txt"], 
                       check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to install API dependencies: {e}")
@@ -31,9 +33,9 @@ def run_api():
     # Start the API server
     try:
         process = subprocess.Popen([
-            "python3", "-m", "uvicorn", "main:app", 
+            "python3", "-m", "uvicorn", "backend.main:app", 
             "--host", "0.0.0.0", "--port", "8000", "--reload"
-        ], cwd="api")
+        ])
         print("✅ FastAPI backend started on http://localhost:8000")
         return process
     except Exception as e:

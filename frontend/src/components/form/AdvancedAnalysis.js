@@ -17,11 +17,36 @@ import {
   Radio,
   FormControl,
   FormLabel,
+  InputAdornment,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ClearIcon from '@mui/icons-material/Clear';
 
 const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
   const [compsFile, setCompsFile] = useState(null);
+  const [errors, setErrors] = useState({});
+
+  // Initialize Monte Carlo with defaults if selected but not configured
+  React.useEffect(() => {
+    if (analyses.includes('Monte Carlo') && (!data.mcRuns || !data.variableSpecs || Object.keys(data.variableSpecs).length === 0)) {
+      const defaultConfig = {
+        mcRuns: 2000,
+        variableSpecs: {
+          wacc: {
+            dist: 'normal',
+            params: { loc: 0.12, scale: 0.01 }
+          },
+          terminal_growth: {
+            dist: 'uniform',
+            params: { low: 0.015, high: 0.025 }
+          }
+        }
+      };
+      onUpdate(defaultConfig);
+    }
+  }, [analyses, data.mcRuns, data.variableSpecs, onUpdate]);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -74,13 +99,42 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
   };
 
   const handleMonteCarloChange = (field, value) => {
-    onUpdate({
-      mcRuns: field === 'mcRuns' ? value : data.mcRuns,
-      variableSpecs: field === 'variableSpecs' ? value : data.variableSpecs
-    });
+    setErrors(prev => ({ ...prev, [field]: null }));
+    
+    if (field === 'mcRuns') {
+      const numValue = parseInt(value);
+      if (isNaN(numValue) || numValue < 100 || numValue > 10000) {
+        setErrors(prev => ({ ...prev, [field]: 'Number of runs must be between 100 and 10,000' }));
+        return;
+      }
+    }
+    
+    // Ensure we have default variable specs if none exist
+    let newData = {
+      mcRuns: field === 'mcRuns' ? value : (data.mcRuns || 2000),
+      variableSpecs: field === 'variableSpecs' ? value : (data.variableSpecs || {})
+    };
+    
+    // If no variable specs exist, create default ones
+    if (!newData.variableSpecs || Object.keys(newData.variableSpecs).length === 0) {
+      newData.variableSpecs = {
+        wacc: {
+          dist: 'normal',
+          params: { loc: 0.12, scale: 0.01 }
+        },
+        terminal_growth: {
+          dist: 'uniform',
+          params: { low: 0.015, high: 0.025 }
+        }
+      };
+    }
+    
+    onUpdate(newData);
   };
 
   const handleMonteCarloVariableChange = (variableName, field, value) => {
+    setErrors(prev => ({ ...prev, [`${variableName}_${field}`]: null }));
+    
     const currentSpecs = data.variableSpecs || {};
     const currentVar = currentSpecs[variableName] || {};
     
@@ -103,6 +157,21 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
       }
     }
     
+    // Validate parameter values
+    if (field === 'params' && newVar.params) {
+      if (newVar.dist === 'normal') {
+        if (newVar.params.scale <= 0) {
+          setErrors(prev => ({ ...prev, [`${variableName}_scale`]: 'Standard deviation must be positive' }));
+          return;
+        }
+      } else if (newVar.dist === 'uniform') {
+        if (newVar.params.low >= newVar.params.high) {
+          setErrors(prev => ({ ...prev, [`${variableName}_range`]: 'Minimum must be less than maximum' }));
+          return;
+        }
+      }
+    }
+    
     const newSpecs = {
       ...currentSpecs,
       [variableName]: newVar
@@ -121,8 +190,37 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
   };
 
   const handleSensitivityChange = (param, field, value) => {
+    setErrors(prev => ({ ...prev, [`${param}_${field}`]: null }));
+    
     const currentRanges = data.sensitivityRanges || {};
     const currentParam = currentRanges[param] || {};
+    
+    // Validate input
+    if (field === 'min' || field === 'max') {
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) {
+        setErrors(prev => ({ ...prev, [`${param}_${field}`]: 'Please enter a valid number' }));
+        return;
+      }
+      
+      if (field === 'min' && currentParam.max && numValue >= currentParam.max) {
+        setErrors(prev => ({ ...prev, [`${param}_${field}`]: 'Minimum must be less than maximum' }));
+        return;
+      }
+      
+      if (field === 'max' && currentParam.min && numValue <= currentParam.min) {
+        setErrors(prev => ({ ...prev, [`${param}_${field}`]: 'Maximum must be greater than minimum' }));
+        return;
+      }
+    }
+    
+    if (field === 'steps') {
+      const numValue = parseInt(value);
+      if (isNaN(numValue) || numValue < 2 || numValue > 20) {
+        setErrors(prev => ({ ...prev, [`${param}_${field}`]: 'Steps must be between 2 and 20' }));
+        return;
+      }
+    }
     
     const newSensitivity = {
       ...currentRanges,
@@ -141,8 +239,8 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
       const newSensitivity = {
         ...currentRanges,
         [param]: {
-          min: defaultConfig.min / 100,
-          max: defaultConfig.max / 100,
+          min: defaultConfig.min / 100,  // Convert percentage to decimal (5% -> 0.05)
+          max: defaultConfig.max / 100,  // Convert percentage to decimal (15% -> 0.15)
           steps: 5
         }
       };
@@ -155,6 +253,26 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
       console.log('Removing sensitivity range for', param);
       onUpdate({ sensitivityRanges: newSensitivity });
     }
+  };
+
+  const clearField = (field) => {
+    onUpdate({ [field]: field === 'mcRuns' ? 1000 : {} });
+    setErrors(prev => ({ ...prev, [field]: null }));
+  };
+
+  const clearVariableField = (variableName, field) => {
+    const currentSpecs = data.variableSpecs || {};
+    const currentVar = currentSpecs[variableName] || {};
+    const newVar = { ...currentVar };
+    delete newVar[field];
+    
+    const newSpecs = {
+      ...currentSpecs,
+      [variableName]: newVar
+    };
+    
+    onUpdate({ variableSpecs: newSpecs });
+    setErrors(prev => ({ ...prev, [`${variableName}_${field}`]: null }));
   };
 
   if (!analyses.some(a => ['Monte Carlo', 'Multiples', 'Scenarios', 'Sensitivity'].includes(a))) {
@@ -213,7 +331,23 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                       value={data.mcRuns || 2000}
                       onChange={(e) => handleMonteCarloChange('mcRuns', parseInt(e.target.value))}
                       inputProps={{ min: 100, max: 10000 }}
-                      helperText="Number of Monte Carlo simulations (100-10,000)"
+                      helperText={errors.mcRuns || "Number of Monte Carlo simulations (100-10,000)"}
+                      error={!!errors.mcRuns}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Tooltip title="Reset to default">
+                              <IconButton
+                                size="small"
+                                onClick={() => clearField('mcRuns')}
+                                edge="end"
+                              >
+                                <ClearIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </InputAdornment>
+                        ),
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -290,7 +424,24 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                                     ...data.variableSpecs[variable.key].params,
                                     loc: parseFloat(e.target.value)
                                   })}
+                                  helperText={errors[`${variable.key}_loc`] || "Mean value for normal distribution"}
+                                  error={!!errors[`${variable.key}_loc`]}
                                   sx={{ mb: 1 }}
+                                  InputProps={{
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <Tooltip title="Reset to default">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => clearVariableField(variable.key, 'params')}
+                                            edge="end"
+                                          >
+                                            <ClearIcon />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </InputAdornment>
+                                    ),
+                                  }}
                                 />
                                 <TextField
                                   fullWidth
@@ -301,6 +452,23 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                                     ...data.variableSpecs[variable.key].params,
                                     scale: parseFloat(e.target.value)
                                   })}
+                                  helperText={errors[`${variable.key}_scale`] || "Standard deviation (must be positive)"}
+                                  error={!!errors[`${variable.key}_scale`]}
+                                  InputProps={{
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <Tooltip title="Reset to default">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => clearVariableField(variable.key, 'params')}
+                                            edge="end"
+                                          >
+                                            <ClearIcon />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </InputAdornment>
+                                    ),
+                                  }}
                                 />
                               </>
                             ) : (
@@ -314,7 +482,24 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                                     ...data.variableSpecs[variable.key].params,
                                     low: parseFloat(e.target.value)
                                   })}
+                                  helperText={errors[`${variable.key}_range`] || "Minimum value for uniform distribution"}
+                                  error={!!errors[`${variable.key}_range`]}
                                   sx={{ mb: 1 }}
+                                  InputProps={{
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <Tooltip title="Reset to default">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => clearVariableField(variable.key, 'params')}
+                                            edge="end"
+                                          >
+                                            <ClearIcon />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </InputAdornment>
+                                    ),
+                                  }}
                                 />
                                 <TextField
                                   fullWidth
@@ -325,6 +510,23 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                                     ...data.variableSpecs[variable.key].params,
                                     high: parseFloat(e.target.value)
                                   })}
+                                  helperText={errors[`${variable.key}_range`] || "Maximum value for uniform distribution"}
+                                  error={!!errors[`${variable.key}_range`]}
+                                  InputProps={{
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <Tooltip title="Reset to default">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => clearVariableField(variable.key, 'params')}
+                                            edge="end"
+                                          >
+                                            <ClearIcon />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </InputAdornment>
+                                    ),
+                                  }}
                                 />
                               </>
                             )}
@@ -523,10 +725,26 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                               fullWidth
                               label={`Minimum (${param.unit})`}
                               type="number"
-                              value={((data.sensitivityRanges[param.key].min || param.min) * 100).toFixed(1)}
+                              value={((data.sensitivityRanges[param.key].min || param.min / 100) * 100).toFixed(1)}
                               onChange={(e) => handleSensitivityChange(param.key, 'min', parseFloat(e.target.value) / 100)}
                               inputProps={{ min: param.min, max: param.max, step: 0.1 }}
-                              helperText={`Min: ${param.min}${param.unit}`}
+                              helperText={errors[`${param.key}_min`] || `Min: ${param.min}${param.unit}`}
+                              error={!!errors[`${param.key}_min`]}
+                              InputProps={{
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <Tooltip title="Reset to default">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleSensitivityChange(param.key, 'min', param.min / 100)}
+                                        edge="end"
+                                      >
+                                        <ClearIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </InputAdornment>
+                                ),
+                              }}
                             />
                           </Grid>
                           <Grid item xs={12} sm={3}>
@@ -534,10 +752,26 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                               fullWidth
                               label={`Maximum (${param.unit})`}
                               type="number"
-                              value={((data.sensitivityRanges[param.key].max || param.max) * 100).toFixed(1)}
+                              value={((data.sensitivityRanges[param.key].max || param.max / 100) * 100).toFixed(1)}
                               onChange={(e) => handleSensitivityChange(param.key, 'max', parseFloat(e.target.value) / 100)}
                               inputProps={{ min: param.min, max: param.max, step: 0.1 }}
-                              helperText={`Max: ${param.max}${param.unit}`}
+                              helperText={errors[`${param.key}_max`] || `Max: ${param.max}${param.unit}`}
+                              error={!!errors[`${param.key}_max`]}
+                              InputProps={{
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <Tooltip title="Reset to default">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleSensitivityChange(param.key, 'max', param.max / 100)}
+                                        edge="end"
+                                      >
+                                        <ClearIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </InputAdornment>
+                                ),
+                              }}
                             />
                           </Grid>
                           <Grid item xs={12} sm={3}>
@@ -548,7 +782,23 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
                               value={data.sensitivityRanges[param.key].steps || 5}
                               onChange={(e) => handleSensitivityChange(param.key, 'steps', parseInt(e.target.value))}
                               inputProps={{ min: 3, max: 10, step: 1 }}
-                              helperText="3-10 steps recommended"
+                              helperText={errors[`${param.key}_steps`] || "3-10 steps recommended"}
+                              error={!!errors[`${param.key}_steps`]}
+                              InputProps={{
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <Tooltip title="Reset to default">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleSensitivityChange(param.key, 'steps', 5)}
+                                        edge="end"
+                                      >
+                                        <ClearIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </InputAdornment>
+                                ),
+                              }}
                             />
                           </Grid>
                           <Grid item xs={12} sm={3}>
@@ -581,6 +831,20 @@ const AdvancedAnalysis = ({ data, analyses, onUpdate }) => {
           </Grid>
         )}
       </Grid>
+
+      {/* Validation Summary */}
+      {Object.keys(errors).length > 0 && (
+        <Alert severity="error" sx={{ mt: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Please fix the following issues:
+          </Typography>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {Object.entries(errors).map(([field, error]) => (
+              <li key={field}>{error}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
     </div>
   );
 };

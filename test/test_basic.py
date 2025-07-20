@@ -16,13 +16,13 @@ from unittest.mock import Mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the modules to test
-from params import ValuationParams
-from valuation import calc_dcf_series, calc_apv
-from drivers import project_ebit, project_fcf, project_revenue
-from montecarlo import run_monte_carlo
-from multiples import run_multiples_analysis
-from scenario import run_scenarios
-from sensitivity import run_sensitivity_analysis
+from backend.core.models.params import ValuationParams
+from backend.core.valuation.dcf import calc_dcf_series, calc_apv
+from backend.core.financial.drivers import project_ebit, project_fcf, project_revenue
+from backend.core.valuation.monte_carlo import run_monte_carlo
+from backend.core.valuation.multiples import run_multiples_analysis
+from backend.core.valuation.scenario import run_scenarios
+from backend.core.valuation.sensitivity import run_sensitivity_analysis
 
 class TestValuationParams:
     """Test the ValuationParams data structure"""

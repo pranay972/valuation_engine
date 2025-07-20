@@ -1,38 +1,133 @@
+/* ==========================================================================
+   Application Styles
+   ========================================================================== */
+
+/* Base App Styles */
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
-.App-link {
-  color: #61dafb;
+/* ==========================================================================
+   Scrollbar Styles
+   ========================================================================== */
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-@keyframes App-logo-spin {
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================================================
+   Global Transitions and Focus
+   ========================================================================== */
+
+/* Smooth transitions for all elements */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Animation Keyframes
+   ========================================================================== */
+
+/* Fade in animation */
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ==========================================================================
+   Animation Classes
+   ========================================================================== */
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+/* ==========================================================================
+   Component Styles
+   ========================================================================== */
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient text effect */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* ==========================================================================
+   Responsive Utilities
+   ========================================================================== */
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Desktop-specific styles */
+@media (min-width: 769px) {
+  .hide-desktop {
+    display: none !important;
   }
 }

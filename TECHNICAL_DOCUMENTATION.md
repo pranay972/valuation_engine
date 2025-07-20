@@ -1,800 +1,761 @@
-# Technical Documentation: Financial Valuation Engine
-
-**Author: Pranay Upreti**  
-**Version: 2.0**  
-**Last Updated: 2024**
+# Technical Documentation
 
 ## Table of Contents
-
 1. [Architecture Overview](#architecture-overview)
-2. [Core Modules](#core-modules)
-3. [Data Structures](#data-structures)
-4. [Valuation Calculations](#valuation-calculations)
-5. [Financial Projections](#financial-projections)
-6. [Monte Carlo Simulation](#monte-carlo-simulation)
-7. [Comparable Multiples Analysis](#comparable-multiples-analysis)
-8. [Scenario Analysis](#scenario-analysis)
-9. [Sensitivity Analysis](#sensitivity-analysis)
-10. [User Interface](#user-interface)
-11. [Error Handling](#error-handling)
-12. [Testing](#testing)
-13. [Deployment](#deployment)
-14. [Troubleshooting Guide](#troubleshooting-guide)
-
----
+2. [Backend Architecture](#backend-architecture)
+3. [Frontend Architecture](#frontend-architecture)
+4. [Core Algorithms](#core-algorithms)
+5. [API Reference](#api-reference)
+6. [Data Models](#data-models)
+7. [Configuration](#configuration)
+8. [Testing Strategy](#testing-strategy)
+9. [Performance Optimization](#performance-optimization)
+10. [Security Considerations](#security-considerations)
+11. [Deployment Guide](#deployment-guide)
+12. [Troubleshooting](#troubleshooting)
 
 ## Architecture Overview
 
-### System Design
-The application follows a modular architecture with clear separation of concerns:
-
+### System Architecture
 ```
-app.py (UI Layer)
-    ↓
-Core Modules (Business Logic)
-    ↓
-Data Structures (Type Safety)
-    ↓
-Financial Calculations (Pure Functions)
+┌─────────────────┐    HTTP/JSON    ┌─────────────────┐
+│   React Frontend│ ◄──────────────► │  FastAPI Backend│
+│   (Port 3000)   │                 │   (Port 8001)   │
+└─────────────────┘                 └─────────────────┘
+                                              │
+                                              ▼
+                                    ┌─────────────────┐
+                                    │  Core Valuation │
+                                    │     Engine      │
+                                    └─────────────────┘
 ```
 
-### Key Design Principles
-- **Modularity**: Each analysis type is self-contained
-- **Type Safety**: Comprehensive type hints and validation
-- **Error Handling**: Graceful degradation with informative messages
-- **Reproducibility**: Fixed random seeds for Monte Carlo
-- **Performance**: Optimized calculations and memory management
+### Technology Stack
+- **Backend**: Python 3.8+, FastAPI, Pandas, NumPy, SciPy
+- **Frontend**: React 18, Material-UI, React Router
+- **Data Processing**: Pandas for financial calculations
+- **Statistical Analysis**: SciPy for Monte Carlo and sensitivity
+- **API**: FastAPI with automatic OpenAPI documentation
+- **Testing**: Pytest for backend, Jest for frontend
 
----
+## Backend Architecture
 
-## Core Modules
+### Core Modules
 
-### 1. `app.py` - Main Application
-**Purpose**: Streamlit web interface and workflow orchestration
-
-#### Key Functions:
-
-##### `main()`
-- **Purpose**: Entry point and main application loop
-- **Responsibilities**:
-  - Initialize session state
-  - Render UI components
-  - Handle user interactions
-  - Coordinate between modules
-  - Display results
-
-##### `parse_series_input(input_text: str, name: str) -> list`
-- **Purpose**: Parse comma-separated numeric inputs
-- **Input**: String like "1000000,1100000,1200000"
-- **Output**: List of floats
-- **Error Handling**: Returns empty list on invalid input
-
-##### `create_user_friendly_debt_input(revenue_input)`
-- **Purpose**: Create interactive debt schedule input
-- **Features**:
-  - Dynamic year generation based on revenue length
-  - Input validation
-  - Visual feedback
-
-##### `create_user_friendly_sensitivity_input()`
-- **Purpose**: Create sensitivity analysis parameter inputs
-- **Features**:
-  - Range sliders for parameters
-  - Step size configuration
-  - Validation
-
-##### `create_user_friendly_scenario_input()`
-- **Purpose**: Create scenario analysis parameter inputs
-- **Features**:
-  - JSON input with validation
-  - Circular reference detection
-  - Parameter override system
-
-##### `run_valuation_analyses(params, analyses, comps_file, mc_runs)`
-- **Purpose**: Orchestrate all valuation analyses
-- **Parameters**:
-  - `params`: ValuationParams object
-  - `analyses`: List of analysis types to run
-  - `comps_file`: Optional comparable companies file
-  - `mc_runs`: Number of Monte Carlo simulations
-- **Returns**: Dictionary with all analysis results
-
-##### `display_results(results, params)`
-- **Purpose**: Render comprehensive results display
-- **Features**:
-  - Summary metrics
-  - Detailed expandable sections
-  - Interactive charts
-  - Download functionality
-
-### 2. `params.py` - Data Structures
-**Purpose**: Define and validate all input parameters
-
-#### `ValuationParams` Dataclass
+#### 1. Valuation Engine (`valuation.py`)
 ```python
-@dataclass
-class ValuationParams:
-    # Financial Projections
-    revenue: List[float]
-    ebit_margin: float
-    capex: List[float]
-    depreciation: List[float]
-    nwc_changes: List[float]
-    fcf_series: List[float]
+class ValuationEngine:
+    """Main valuation calculation engine"""
     
-    # Capital Structure
-    share_count: float
-    cost_of_debt: float
-    debt_schedule: Dict[int, float]
-    
-    # Valuation Assumptions
-    wacc: float
-    tax_rate: float
-    terminal_growth: float
-    mid_year_convention: bool
-    
-    # Advanced Analysis
-    mc_specs: Dict[str, Dict]
-    scenarios: Dict[str, Dict]
-    sensitivity_ranges: Dict[str, List[float]]
-```
-
-#### Validation Methods:
-- **`validate_financial_projections()`**: Ensures positive revenues and valid margins
-- **`validate_valuation_assumptions()`**: Checks WACC > growth rate
-- **`validate_series_lengths()`**: Ensures all series have same length
-- **`validate_debt_schedule()`**: Validates debt schedule format
-
-### 3. `valuation.py` - Core DCF Calculations
-**Purpose**: Implement WACC and APV DCF methodologies
-
-#### `calc_dcf_series(params: ValuationParams) -> Tuple[float, float, Optional[float]]`
-**WACC DCF Implementation**:
-
-1. **Free Cash Flow Calculation**:
-   ```python
-   # For each year in projection period
-   fcf = ebit * (1 - tax_rate) + depreciation - capex - nwc_changes
-   ```
-
-2. **Terminal Value Calculation**:
-   ```python
-   # Terminal value = FCF_n * (1 + g) / (WACC - g)
-   terminal_fcf = fcf[-1] * (1 + terminal_growth)
-   terminal_value = terminal_fcf / (wacc - terminal_growth)
-   ```
-
-3. **Discounting**:
-   ```python
-   # Discount each FCF to present value
-   pv_fcf = fcf[i] / (1 + wacc)^(i+1)  # or i+0.5 for mid-year
-   
-   # Discount terminal value
-   pv_terminal = terminal_value / (1 + wacc)^n
-   ```
-
-4. **Enterprise Value**:
-   ```python
-   enterprise_value = sum(pv_fcf) + pv_terminal
-   ```
-
-5. **Equity Value**:
-   ```python
-   equity_value = enterprise_value - net_debt
-   price_per_share = equity_value / shares_outstanding
-   ```
-
-#### `calc_apv(params: ValuationParams) -> Tuple[float, float, Optional[float]]`
-**APV Implementation**:
-
-1. **Unlevered FCF**:
-   ```python
-   # Same as WACC but without tax shield effects
-   unlevered_fcf = ebit * (1 - tax_rate) + depreciation - capex - nwc_changes
-   ```
-
-2. **Tax Shield Calculation**:
-   ```python
-   # Tax shield = interest * tax_rate
-   tax_shield = debt * cost_of_debt * tax_rate
-   ```
-
-3. **Discounting**:
-   ```python
-   # Unlevered FCF discounted at unlevered cost of equity
-   # Tax shields discounted at cost of debt
-   ```
-
-4. **APV Value**:
-   ```python
-   apv_value = unlevered_value + pv_tax_shields
-   ```
-
-### 4. `drivers.py` - Financial Projections
-**Purpose**: Calculate financial metrics from drivers
-
-#### `project_ebit(revenues: List[float], ebit_margin: float) -> List[float]`
-```python
-def project_ebit(revenues: List[float], ebit_margin: float) -> List[float]:
-    """Calculate EBIT from revenue and margin."""
-    return [revenue * ebit_margin for revenue in revenues]
-```
-
-#### `project_fcf(revenues, ebits, capex, depreciation, nwc_changes, tax_rate) -> List[float]`
-```python
-def project_fcf(revenues, ebits, capex, depreciation, nwc_changes, tax_rate):
-    """Calculate Free Cash Flow from components."""
-    fcfs = []
-    for i in range(len(revenues)):
-        # NOPAT = EBIT * (1 - tax_rate)
-        nopat = ebits[i] * (1 - tax_rate)
+    def calculate_dcf(self, projections, assumptions):
+        """Calculate DCF valuation using WACC or APV method"""
         
-        # FCF = NOPAT + Depreciation - CapEx - NWC Changes
-        fcf = nopat + depreciation[i] - capex[i] - nwc_changes[i]
-        fcfs.append(fcf)
-    
-    return fcfs
-```
-
-### 5. `montecarlo.py` - Uncertainty Analysis
-**Purpose**: Monte Carlo simulation for parameter uncertainty
-
-#### `run_monte_carlo(params: ValuationParams, runs: int = 2000) -> Dict[str, pd.DataFrame]`
-**Implementation Steps**:
-
-1. **Parameter Sampling**:
-   ```python
-   # For each parameter with distribution specification
-   if param_spec["dist"] == "normal":
-       samples = np.random.normal(
-           loc=param_spec["params"]["loc"],
-           scale=param_spec["params"]["scale"],
-           size=runs
-       )
-   elif param_spec["dist"] == "uniform":
-       samples = np.random.uniform(
-           low=param_spec["params"]["low"],
-           high=param_spec["params"]["high"],
-           size=runs
-       )
-   ```
-
-2. **Valuation Runs**:
-   ```python
-   # For each sample set
-   for i in range(runs):
-       # Create modified params with sampled values
-       modified_params = copy.deepcopy(params)
-       modified_params.wacc = wacc_samples[i]
-       modified_params.terminal_growth = growth_samples[i]
-       
-       # Run valuation
-       ev, eqv, pps = calc_dcf_series(modified_params)
-       
-       # Store results
-       results.append({
-           "Run": i,
-           "Enterprise Value": ev,
-           "Equity Value": eqv,
-           "Price per Share": pps
-       })
-   ```
-
-3. **Statistical Analysis**:
-   ```python
-   # Calculate distribution statistics
-   mean_ev = np.mean(enterprise_values)
-   median_ev = np.median(enterprise_values)
-   std_ev = np.std(enterprise_values)
-   percentiles = np.percentile(enterprise_values, [5, 25, 50, 75, 95])
-   ```
-
-### 6. `multiples.py` - Comparable Analysis
-**Purpose**: Comparable company multiples analysis
-
-#### `run_multiples_analysis(params: ValuationParams, comps: pd.DataFrame) -> pd.DataFrame`
-**Implementation Steps**:
-
-1. **Calculate Our Metrics**:
-   ```python
-   # EBITDA = EBIT + Depreciation
-   ebitda = ebits[-1] + depreciation[-1]
-   
-   # Earnings = NOPAT = EBIT * (1 - tax_rate)
-   earnings = ebits[-1] * (1 - tax_rate)
-   
-   # FCF = last year free cash flow
-   fcf = fcfs[-1]
-   
-   # Revenue = last year revenue
-   revenue = revenues[-1]
-   ```
-
-2. **Process Each Multiple**:
-   ```python
-   for col in comps.columns:
-       if "/" not in col:
-           continue
-       
-       # Parse multiple (e.g., "EV/EBITDA" -> ["EV", "EBITDA"])
-       numerator, denominator = col.split("/")
-       
-       # Get our corresponding metric
-       our_metric = metric_map[denominator]
-       
-       # Get peer multiples
-       peer_multiples = comps[col].dropna()
-       
-       # Filter outliers (3 standard deviations)
-       mean_mult = peer_multiples.mean()
-       std_mult = peer_multiples.std()
-       filtered_multiples = peer_multiples[
-           (peer_multiples >= mean_mult - 3*std_mult) &
-           (peer_multiples <= mean_mult + 3*std_mult)
-       ]
-       
-       # Calculate implied values
-       implied_evs = filtered_multiples * our_metric
-   ```
-
-3. **Summary Statistics**:
-   ```python
-   result = {
-       "Multiple": col,
-       "Mean Implied EV": implied_evs.mean(),
-       "Median Implied EV": implied_evs.median(),
-       "Std Dev Implied EV": implied_evs.std(),
-       "Min Implied EV": implied_evs.min(),
-       "Max Implied EV": implied_evs.max(),
-       "Peer Count": len(filtered_multiples),
-       "Our Metric": our_metric,
-       "Mean Multiple": filtered_multiples.mean()
-   }
-   ```
-
-### 7. `scenario.py` - Scenario Analysis
-**Purpose**: "What-if" scenario testing
-
-#### `run_scenarios(params: ValuationParams) -> pd.DataFrame`
-**Implementation Steps**:
-
-1. **Circular Reference Detection**:
-   ```python
-   def detect_circular_references(scenarios: Dict) -> List[str]:
-       """Detect circular references in scenario definitions."""
-       # Build dependency graph
-       # Use topological sort to detect cycles
-   ```
-
-2. **Scenario Execution**:
-   ```python
-   for scenario_name, overrides in scenarios.items():
-       # Create modified parameters
-       modified_params = copy.deepcopy(params)
-       
-       # Apply overrides
-       for param_name, value in overrides.items():
-           setattr(modified_params, param_name, value)
-       
-       # Run valuation
-       ev, eqv, pps = calc_dcf_series(modified_params)
-       
-       # Store results
-       results.append({
-           "Scenario": scenario_name,
-           "Enterprise Value": ev,
-           "Equity Value": eqv,
-           "Price per Share": pps
-       })
-   ```
-
-### 8. `sensitivity.py` - Sensitivity Analysis
-**Purpose**: Parameter impact assessment
-
-#### `run_sensitivity_analysis(params: ValuationParams) -> pd.DataFrame`
-**Implementation Steps**:
-
-1. **Parameter Range Generation**:
-   ```python
-   for param_name, range_values in sensitivity_ranges.items():
-       for value in range_values:
-           # Create modified parameters
-           modified_params = copy.deepcopy(params)
-           setattr(modified_params, param_name, value)
-           
-           # Run valuation
-           ev, eqv, pps = calc_dcf_series(modified_params)
-           
-           # Store results
-           results.append({
-               "Parameter": param_name,
-               "Value": value,
-               "Enterprise Value": ev,
-               "Equity Value": eqv,
-               "Price per Share": pps
-           })
-   ```
-
----
-
-## Financial Calculations Deep Dive
-
-### DCF Methodology
-
-#### 1. Free Cash Flow to Firm (FCFF)
-```python
-# FCFF = NOPAT + Depreciation - CapEx - Change in NWC
-# Where NOPAT = EBIT * (1 - Tax Rate)
-
-def calculate_fcff(ebit, tax_rate, depreciation, capex, nwc_change):
-    nopat = ebit * (1 - tax_rate)
-    fcff = nopat + depreciation - capex - nwc_change
-    return fcff
-```
-
-#### 2. Terminal Value
-```python
-# Terminal Value = FCF_n * (1 + g) / (WACC - g)
-# Where g = terminal growth rate
-
-def calculate_terminal_value(last_fcf, terminal_growth, wacc):
-    terminal_fcf = last_fcf * (1 + terminal_growth)
-    terminal_value = terminal_fcf / (wacc - terminal_growth)
-    return terminal_value
-```
-
-#### 3. Discounting
-```python
-# Present Value = Future Value / (1 + discount_rate)^periods
-
-def discount_cash_flows(fcfs, wacc, mid_year=False):
-    pv_fcfs = []
-    for i, fcf in enumerate(fcfs):
-        if mid_year:
-            period = i + 0.5  # Mid-year convention
-        else:
-            period = i + 1    # Year-end convention
+    def calculate_terminal_value(self, final_fcf, growth, wacc):
+        """Calculate terminal value using Gordon Growth Model"""
         
-        pv = fcf / ((1 + wacc) ** period)
-        pv_fcfs.append(pv)
-    
-    return pv_fcfs
+    def calculate_enterprise_value(self, fcf_series, terminal_value, wacc):
+        """Calculate enterprise value from FCF and terminal value"""
 ```
 
-### WACC Calculation
+#### 2. Monte Carlo Engine (`montecarlo.py`)
 ```python
-# WACC = (E/V * Re) + (D/V * Rd * (1 - T))
-# Where:
-# E = Market value of equity
-# D = Market value of debt
-# V = Total value (E + D)
-# Re = Cost of equity
-# Rd = Cost of debt
-# T = Tax rate
-
-def calculate_wacc(equity_value, debt_value, cost_of_equity, cost_of_debt, tax_rate):
-    total_value = equity_value + debt_value
-    equity_weight = equity_value / total_value
-    debt_weight = debt_value / total_value
+class MonteCarloEngine:
+    """Monte Carlo simulation engine"""
     
-    wacc = (equity_weight * cost_of_equity) + (debt_weight * cost_of_debt * (1 - tax_rate))
-    return wacc
+    def run_simulation(self, base_data, variable_specs, runs):
+        """Run Monte Carlo simulation with specified variables"""
+        
+    def generate_distributions(self, specs):
+        """Generate probability distributions for variables"""
+        
+    def calculate_statistics(self, results):
+        """Calculate statistical measures from simulation results"""
 ```
 
-### APV Methodology
+#### 3. Sensitivity Analysis (`sensitivity.py`)
 ```python
-# APV = Unlevered Value + Present Value of Tax Shields
-
-def calculate_apv(unlevered_value, tax_shields, cost_of_debt):
-    # Discount tax shields at cost of debt
-    pv_tax_shields = sum([
-        ts / ((1 + cost_of_debt) ** (i + 1))
-        for i, ts in enumerate(tax_shields)
-    ])
+class SensitivityEngine:
+    """Sensitivity analysis engine"""
     
-    apv = unlevered_value + pv_tax_shields
-    return apv
+    def create_sensitivity_table(self, base_data, ranges, steps):
+        """Create multi-dimensional sensitivity table"""
+        
+    def calculate_impact(self, base_value, variations):
+        """Calculate impact of parameter variations"""
 ```
 
----
-
-## Error Handling Strategy
-
-### 1. Input Validation
+#### 4. Multiples Analysis (`multiples.py`)
 ```python
-def validate_financial_inputs(params: ValuationParams) -> List[str]:
-    errors = []
+class MultiplesEngine:
+    """Comparable multiples analysis engine"""
     
-    # Check for positive revenues
-    if any(r <= 0 for r in params.revenue):
-        errors.append("All revenues must be positive")
-    
-    # Check WACC > growth rate
-    if params.wacc <= params.terminal_growth:
-        errors.append("WACC must be greater than terminal growth rate")
-    
-    # Check series lengths
-    if len(set([len(params.revenue), len(params.capex), 
-                len(params.depreciation), len(params.nwc_changes)])) > 1:
-        errors.append("All financial series must have the same length")
-    
-    return errors
+    def calculate_multiples(self, comps_data, target_metrics):
+        """Calculate valuation multiples from comparable companies"""
+        
+    def filter_outliers(self, multiples, method='iqr'):
+        """Remove statistical outliers from multiples data"""
 ```
 
-### 2. Graceful Degradation
-```python
-def safe_calculation(func, *args, **kwargs):
-    """Wrapper for safe calculation execution."""
-    try:
-        return func(*args, **kwargs)
-    except ZeroDivisionError:
-        return None, "Division by zero error"
-    except ValueError as e:
-        return None, f"Invalid input: {str(e)}"
-    except Exception as e:
-        return None, f"Unexpected error: {str(e)}"
+### Data Flow
+1. **Request Reception**: FastAPI receives JSON request
+2. **Validation**: Pydantic models validate input data
+3. **Processing**: Core engines perform calculations
+4. **Caching**: Results cached for performance
+5. **Response**: JSON response with results and metadata
+
+## Frontend Architecture
+
+### Component Hierarchy
+```
+App
+├── Header
+├── ValuationForm
+│   ├── AnalysisSelection
+│   ├── FinancialProjections
+│   ├── ValuationAssumptions
+│   └── AdvancedAnalysis
+├── Results
+└── Footer
 ```
 
-### 3. User-Friendly Messages
+### State Management
+- **Local State**: React hooks for component-level state
+- **Form State**: Controlled components with validation
+- **API State**: Custom hooks for API calls and loading states
+
+### Custom Hooks
+
+#### useApi Hook
+```javascript
+const { loading, error, runValuation, clearError } = useApi();
+
+// Features:
+// - Loading state management
+// - Error handling with specific messages
+// - Request timeout (30 seconds)
+// - Request cancellation
+```
+
+#### useFormValidation Hook
+```javascript
+const { errors, validateNumber, validatePercentage, hasErrors } = useFormValidation();
+
+// Features:
+// - Field-level error management
+// - Validation functions for different data types
+// - Error clearing and setting
+```
+
+## Core Algorithms
+
+### 1. DCF Valuation Algorithm
+
+#### WACC DCF Method
 ```python
-ERROR_MESSAGES = {
-    "negative_valuation": "Valuation is negative. Check your assumptions.",
-    "invalid_multiples": "No valid multiples found in comparable companies data.",
-    "circular_reference": "Circular reference detected in scenario definitions.",
-    "insufficient_data": "Insufficient data for analysis."
+def calculate_wacc_dcf(revenue, ebit_margin, capex, depreciation, nwc_changes, 
+                      wacc, terminal_growth, tax_rate, share_count):
+    """
+    Calculate DCF valuation using WACC method
+    
+    Steps:
+    1. Calculate EBIT = Revenue × EBIT Margin
+    2. Calculate NOPAT = EBIT × (1 - Tax Rate)
+    3. Calculate FCF = NOPAT + Depreciation - CapEx - NWC Changes
+    4. Calculate Terminal Value = Final FCF × (1 + g) / (WACC - g)
+    5. Discount FCF and Terminal Value to present
+    6. Calculate Enterprise Value = Sum of discounted values
+    7. Calculate Equity Value = Enterprise Value - Net Debt
+    8. Calculate Price per Share = Equity Value / Share Count
+    """
+```
+
+#### APV DCF Method
+```python
+def calculate_apv_dcf(revenue, ebit_margin, capex, depreciation, nwc_changes,
+                     unlevered_cost, cost_of_debt, tax_rate, debt_schedule):
+    """
+    Calculate DCF valuation using APV method
+    
+    Steps:
+    1. Calculate unlevered FCF (same as WACC method)
+    2. Calculate unlevered value by discounting at unlevered cost of capital
+    3. Calculate tax shield value from debt schedule
+    4. Enterprise Value = Unlevered Value + Tax Shield Value
+    5. Equity Value = Enterprise Value - Net Debt
+    """
+```
+
+### 2. Monte Carlo Simulation Algorithm
+
+```python
+def monte_carlo_simulation(base_data, variable_specs, runs):
+    """
+    Monte Carlo simulation algorithm
+    
+    Steps:
+    1. Define probability distributions for key variables
+    2. Generate random samples for each variable
+    3. Run DCF calculation with each sample set
+    4. Collect all valuation results
+    5. Calculate statistical measures (mean, median, percentiles)
+    6. Generate confidence intervals
+    """
+    
+    # Distribution types supported:
+    # - Normal: loc (mean), scale (standard deviation)
+    # - Uniform: low, high
+    # - Triangular: low, mode, high
+    # - Lognormal: loc, scale
+```
+
+### 3. Sensitivity Analysis Algorithm
+
+```python
+def sensitivity_analysis(base_data, parameter_ranges, steps):
+    """
+    Sensitivity analysis algorithm
+    
+    Steps:
+    1. Define parameter ranges and step sizes
+    2. Create grid of parameter combinations
+    3. Run valuation for each combination
+    4. Calculate impact metrics
+    5. Generate sensitivity tables
+    6. Identify key value drivers
+    """
+```
+
+### 4. Multiples Analysis Algorithm
+
+```python
+def multiples_analysis(comps_data, target_metrics):
+    """
+    Comparable multiples analysis
+    
+    Steps:
+    1. Calculate valuation multiples for comparable companies
+    2. Remove statistical outliers
+    3. Calculate mean, median, and range
+    4. Apply multiples to target company metrics
+    5. Calculate implied enterprise values
+    6. Generate valuation ranges
+    """
+```
+
+## API Reference
+
+### Core Endpoints
+
+#### POST /api/valuation
+Run comprehensive valuation analysis.
+
+**Request Body:**
+```json
+{
+  "analyses": ["WACC DCF", "Monte Carlo"],
+  "financial_projections": {
+    "input_mode": "driver",
+    "revenue": [1000000, 1100000, 1210000],
+    "ebit_margin": 0.20,
+    "capex": [50000, 55000, 60500],
+    "depreciation": [40000, 44000, 48400],
+    "nwc_changes": [10000, 11000, 12100],
+    "share_count": 100000000,
+    "cost_of_debt": 0.05,
+    "current_debt": 0,
+    "debt_schedule": {}
+  },
+  "valuation_assumptions": {
+    "wacc": 0.12,
+    "terminal_growth": 0.025,
+    "tax_rate": 0.25,
+    "mid_year_convention": true
+  },
+  "advanced_analysis": {
+    "mc_runs": 2000,
+    "variable_specs": {
+      "wacc": {
+        "dist": "normal",
+        "params": {"loc": 0.12, "scale": 0.01}
+      }
+    }
+  }
 }
 ```
 
----
+**Response:**
+```json
+{
+  "status": "success",
+  "results": {
+    "wacc_dcf": {
+      "enterprise_value": 15000000,
+      "equity_value": 15000000,
+      "price_per_share": 0.15,
+      "fcf_series": [...],
+      "terminal_value": 12000000
+    },
+    "monte_carlo": {
+      "statistics": {
+        "mean": 0.15,
+        "median": 0.14,
+        "std": 0.02,
+        "percentiles": {
+          "5": 0.12,
+          "25": 0.13,
+          "50": 0.14,
+          "75": 0.16,
+          "95": 0.18
+        }
+      },
+      "distribution": [...]
+    }
+  },
+  "metadata": {
+    "execution_time": 2.5,
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+#### GET /health
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "version": "2.0.0"
+}
+```
+
+### Error Responses
+```json
+{
+  "status": "error",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid WACC value. Must be between 0 and 1.",
+    "details": {
+      "field": "wacc",
+      "value": 1.5
+    }
+  }
+}
+```
+
+## Data Models
+
+### Pydantic Models
+
+#### FinancialProjections
+```python
+class FinancialProjections(BaseModel):
+    input_mode: Literal["driver", "direct"]
+    revenue: List[float]
+    ebit_margin: float = Field(ge=0, le=1)
+    capex: List[float]
+    depreciation: List[float]
+    nwc_changes: List[float]
+    fcf_series: Optional[List[float]] = None
+    share_count: int = Field(gt=0)
+    cost_of_debt: float = Field(ge=0, le=1)
+    current_debt: float = Field(ge=0)
+    debt_schedule: Dict[str, float] = {}
+```
+
+#### ValuationAssumptions
+```python
+class ValuationAssumptions(BaseModel):
+    wacc: float = Field(ge=0, le=1)
+    terminal_growth: float = Field(ge=-0.1, le=0.1)
+    tax_rate: float = Field(ge=0, le=1)
+    mid_year_convention: bool = True
+```
+
+#### MonteCarloSpec
+```python
+class MonteCarloSpec(BaseModel):
+    mc_runs: int = Field(ge=100, le=10000)
+    variable_specs: Dict[str, VariableSpec]
+    
+class VariableSpec(BaseModel):
+    dist: Literal["normal", "uniform", "triangular", "lognormal"]
+    params: Dict[str, float]
+```
+
+### Validation Rules
+- **Revenue**: Must be positive and same length as other series
+- **EBIT Margin**: Between 0% and 100%
+- **WACC**: Between 0% and 100%
+- **Terminal Growth**: Between -10% and +10%
+- **Terminal Growth < WACC**: Prevents infinite terminal value
+- **Monte Carlo Runs**: Between 100 and 10,000
+
+## Configuration
+
+### Environment Variables
+```bash
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8001
+API_WORKERS=4
+API_TIMEOUT=30
+
+# CORS Configuration
+CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FILE=valuation.log
+LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+# Cache Configuration
+CACHE_TTL=3600
+CACHE_MAX_SIZE=1000
+
+# Security Configuration
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=["localhost", "127.0.0.1"]
+```
+
+### Configuration Files
+
+#### config.py
+```python
+class Settings(BaseSettings):
+    """Application settings"""
+    
+    # API Settings
+    api_host: str = "0.0.0.0"
+    api_port: int = 8001
+    api_workers: int = 4
+    api_timeout: int = 30
+    
+    # CORS Settings
+    cors_origins: List[str] = ["http://localhost:3000"]
+    
+    # Logging Settings
+    log_level: str = "INFO"
+    log_file: str = "valuation.log"
+    
+    # Cache Settings
+    cache_ttl: int = 3600
+    cache_max_size: int = 1000
+    
+    class Config:
+        env_file = ".env"
+```
 
 ## Testing Strategy
 
-### 1. Unit Tests
+### Backend Testing
+
+#### Unit Tests
 ```python
-def test_dcf_calculation():
-    """Test basic DCF calculation."""
-    params = ValuationParams(
+# Test valuation calculations
+def test_wacc_dcf_calculation():
+    """Test WACC DCF calculation with known inputs"""
+    result = calculate_wacc_dcf(
         revenue=[1000000, 1100000],
         ebit_margin=0.20,
-        capex=[100000, 110000],
-        depreciation=[50000, 55000],
-        nwc_changes=[20000, 22000],
-        wacc=0.10,
-        tax_rate=0.21,
-        terminal_growth=0.02,
-        # ... other required fields
+        wacc=0.12,
+        terminal_growth=0.025
     )
-    
-    ev, eqv, pps = calc_dcf_series(params)
-    
-    assert ev > 0, "Enterprise value should be positive"
-    assert eqv > 0, "Equity value should be positive"
-    assert pps > 0, "Price per share should be positive"
+    assert result['enterprise_value'] > 0
+    assert result['equity_value'] > 0
 ```
 
-### 2. Integration Tests
+#### Integration Tests
 ```python
-def test_full_valuation_workflow():
-    """Test complete valuation workflow."""
-    # Test with sample data
-    # Verify all analysis types work together
-    # Check output formats
+# Test API endpoints
+def test_valuation_endpoint():
+    """Test complete valuation API endpoint"""
+    response = client.post("/api/valuation", json=test_data)
+    assert response.status_code == 200
+    assert "results" in response.json()
 ```
 
-### 3. Edge Case Testing
+#### Performance Tests
 ```python
-def test_edge_cases():
-    """Test edge cases and error conditions."""
-    # Test with zero revenues
-    # Test with negative margins
-    # Test with extreme growth rates
-    # Test with empty comparable companies
+# Test Monte Carlo performance
+def test_monte_carlo_performance():
+    """Test Monte Carlo simulation performance"""
+    start_time = time.time()
+    result = run_monte_carlo(base_data, specs, 1000)
+    execution_time = time.time() - start_time
+    assert execution_time < 5.0  # Should complete within 5 seconds
 ```
 
----
+### Frontend Testing
+
+#### Component Tests
+```javascript
+// Test form validation
+test('validates required fields', () => {
+  render(<ValuationForm />);
+  const submitButton = screen.getByText('Run Valuation');
+  fireEvent.click(submitButton);
+  expect(screen.getByText('Revenue is required')).toBeInTheDocument();
+});
+```
+
+#### Integration Tests
+```javascript
+// Test API integration
+test('submits form data to API', async () => {
+  const mockApi = jest.fn();
+  render(<ValuationForm onSubmit={mockApi} />);
+  
+  // Fill form and submit
+  fireEvent.click(screen.getByText('Run Valuation'));
+  
+  await waitFor(() => {
+    expect(mockApi).toHaveBeenCalledWith(expect.objectContaining({
+      analyses: ['WACC DCF']
+    }));
+  });
+});
+```
+
+### Test Coverage Targets
+- **Backend**: >90% code coverage
+- **Frontend**: >80% code coverage
+- **Critical Paths**: 100% coverage
+- **API Endpoints**: 100% coverage
 
 ## Performance Optimization
 
-### 1. Monte Carlo Optimization
+### Backend Optimizations
+
+#### Caching Strategy
 ```python
-# Pre-generate random samples
-def optimize_monte_carlo(runs: int, param_specs: Dict):
-    """Pre-generate all random samples for efficiency."""
-    samples = {}
-    for param_name, spec in param_specs.items():
-        if spec["dist"] == "normal":
-            samples[param_name] = np.random.normal(
-                loc=spec["params"]["loc"],
-                scale=spec["params"]["scale"],
-                size=runs
-            )
-    return samples
+# Redis caching for expensive calculations
+@cache(ttl=3600)
+def calculate_dcf(projections, assumptions):
+    """Cache DCF calculations for 1 hour"""
+    return perform_dcf_calculation(projections, assumptions)
 ```
 
-### 2. Memory Management
+#### Database Optimization
+- **Connection Pooling**: Reuse database connections
+- **Query Optimization**: Use indexes for frequently accessed data
+- **Caching**: Cache frequently accessed data
+
+#### Algorithm Optimization
 ```python
-# Use generators for large datasets
-def process_large_dataset(data):
-    """Process large datasets without loading everything into memory."""
-    for chunk in pd.read_csv('large_file.csv', chunksize=1000):
-        yield process_chunk(chunk)
+# Vectorized calculations using NumPy
+def calculate_fcf_vectorized(revenue, ebit_margin, capex, depreciation, nwc_changes):
+    """Vectorized FCF calculation for better performance"""
+    revenue_array = np.array(revenue)
+    ebit = revenue_array * ebit_margin
+    fcf = ebit * (1 - tax_rate) + np.array(depreciation) - np.array(capex) - np.array(nwc_changes)
+    return fcf.tolist()
 ```
 
-### 3. Caching
-```python
-# Cache expensive calculations
-@st.cache_data
-def expensive_calculation(params):
-    """Cache expensive calculations in Streamlit."""
-    return complex_valuation_calculation(params)
+### Frontend Optimizations
+
+#### React Optimizations
+```javascript
+// Memoize expensive calculations
+const memoizedResults = useMemo(() => {
+  return calculateValuationMetrics(data);
+}, [data]);
+
+// Lazy load components
+const AdvancedAnalysis = lazy(() => import('./AdvancedAnalysis'));
 ```
 
----
+#### Bundle Optimization
+- **Code Splitting**: Split code into smaller chunks
+- **Tree Shaking**: Remove unused code
+- **Minification**: Compress JavaScript and CSS
 
-## Deployment Considerations
+### Performance Monitoring
+```python
+# Performance metrics
+class PerformanceMetrics:
+    def __init__(self):
+        self.execution_times = []
+        self.memory_usage = []
+    
+    def record_execution_time(self, operation, duration):
+        """Record execution time for performance monitoring"""
+        self.execution_times.append({
+            'operation': operation,
+            'duration': duration,
+            'timestamp': datetime.now()
+        })
+```
 
-### 1. Streamlit Cloud Deployment
+## Security Considerations
+
+### Input Validation
+```python
+# Comprehensive input validation
+def validate_financial_data(data: FinancialProjections) -> ValidationResult:
+    """Validate all financial data inputs"""
+    
+    # Check for negative values
+    if any(r < 0 for r in data.revenue):
+        return ValidationResult(valid=False, error="Revenue cannot be negative")
+    
+    # Check series lengths
+    if len(set([len(data.revenue), len(data.capex), len(data.depreciation)])) > 1:
+        return ValidationResult(valid=False, error="All series must have same length")
+    
+    return ValidationResult(valid=True)
+```
+
+### API Security
+- **Rate Limiting**: Prevent abuse with rate limiting
+- **CORS Configuration**: Restrict cross-origin requests
+- **Input Sanitization**: Sanitize all user inputs
+- **Error Handling**: Don't expose sensitive information in errors
+
+### Data Security
+- **Encryption**: Encrypt sensitive data at rest
+- **Access Control**: Implement proper access controls
+- **Audit Logging**: Log all data access and modifications
+
+## Deployment Guide
+
+### Docker Deployment
+```dockerfile
+# Backend Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+EXPOSE 8001
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+```
+
+```dockerfile
+# Frontend Dockerfile
+FROM node:16-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+### Docker Compose
 ```yaml
-# .streamlit/config.toml
-[server]
-maxUploadSize = 200
-enableXsrfProtection = false
-
-[browser]
-gatherUsageStats = false
+version: '3.8'
+services:
+  backend:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+    volumes:
+      - ./logs:/app/logs
+  
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8001
+    depends_on:
+      - backend
 ```
 
-### 2. Environment Variables
+### Production Deployment
 ```bash
-# .env
-STREAMLIT_SERVER_PORT=8501
-STREAMLIT_SERVER_ADDRESS=0.0.0.0
+# Build production images
+docker-compose -f docker-compose.prod.yml build
+
+# Deploy to production
+docker-compose -f docker-compose.prod.yml up -d
+
+# Monitor logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-### 3. Dependencies Management
-```txt
-# requirements.txt - Production
-streamlit>=1.28.0
-pandas>=1.5.0
-numpy>=1.21.0
-matplotlib>=3.5.0
-plotly>=5.0.0
-openpyxl>=3.0.0
+## Troubleshooting
 
-# requirements-minimal.txt - Minimal deployment
-streamlit>=1.28.0
-pandas>=1.5.0
-numpy>=1.21.0
-```
+### Common Issues
 
----
+#### 1. Memory Issues
+**Problem**: Large Monte Carlo simulations causing memory errors
+**Solution**: 
+- Reduce Monte Carlo runs (use 1,000-2,000 for testing)
+- Implement streaming for large datasets
+- Add memory monitoring
 
-## Troubleshooting Guide
+#### 2. Performance Issues
+**Problem**: Slow calculation times
+**Solution**:
+- Enable caching for repeated calculations
+- Use vectorized operations with NumPy
+- Implement parallel processing for Monte Carlo
 
-### Common Issues and Solutions
+#### 3. Validation Errors
+**Problem**: Input validation failures
+**Solution**:
+- Check data types and ranges
+- Ensure all series have same length
+- Verify terminal growth < WACC
 
-#### 1. Negative Valuations
-**Symptoms**: Enterprise value or equity value is negative
-**Causes**:
-- EBIT margin is 0 or negative
-- Terminal growth >= WACC
-- Negative free cash flows
-**Solutions**:
-- Check EBIT margin is positive
-- Ensure terminal growth < WACC
-- Review cash flow projections
+#### 4. API Connection Issues
+**Problem**: Frontend can't connect to backend
+**Solution**:
+- Check CORS configuration
+- Verify API URL in frontend
+- Check firewall settings
 
-#### 2. "No valid multiples found" Error
-**Symptoms**: Multiples analysis fails
-**Causes**:
-- CSV file doesn't have proper column names
-- Non-numeric data in multiple columns
-- Missing required metrics
-**Solutions**:
-- Ensure column names follow "EV/EBITDA" format
-- Check all multiple values are numeric
-- Verify company has positive metrics
-
-#### 3. Memory Issues
-**Symptoms**: App crashes or becomes slow
-**Causes**:
-- Too many Monte Carlo runs
-- Large comparable companies dataset
-- Multiple scenarios with complex calculations
-**Solutions**:
-- Reduce Monte Carlo simulation count
-- Filter comparable companies
-- Limit number of scenarios
-
-#### 4. Import Errors
-**Symptoms**: Module import failures
-**Causes**:
-- Missing dependencies
-- Python version incompatibility
-- Virtual environment issues
-**Solutions**:
-- Install requirements: `pip install -r requirements.txt`
-- Use Python 3.8+
-- Activate virtual environment
-
-#### 5. Type Checking Warnings
-**Symptoms**: Red squiggles in IDE
-**Causes**:
-- Pandas type complexity
-- IDE type inference limitations
-**Solutions**:
-- Add `# type: ignore` comments
-- Use type ignore at function level
-- Ignore warnings (they don't affect functionality)
-
-### Debug Mode
+### Debug Tools
 ```python
-# Enable debug mode in app.py
-DEBUG = True
-
-if DEBUG:
-    st.write("Debug info:", locals())
-    st.write("Session state:", st.session_state)
-```
-
-### Logging
-```python
+# Debug logging
 import logging
-
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
-def debug_function():
-    logger.debug("Entering function")
-    # ... function logic
-    logger.debug("Exiting function")
+# Performance profiling
+import cProfile
+import pstats
+
+def profile_function(func, *args):
+    """Profile function performance"""
+    profiler = cProfile.Profile()
+    profiler.enable()
+    result = func(*args)
+    profiler.disable()
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')
+    stats.print_stats(10)
+    return result
+```
+
+### Monitoring
+```python
+# Health check monitoring
+@app.get("/health")
+async def health_check():
+    """Comprehensive health check"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0",
+        "memory_usage": psutil.virtual_memory().percent,
+        "cpu_usage": psutil.cpu_percent()
+    }
 ```
 
 ---
 
-## Maintenance Checklist
-
-### Daily Operations
-- [ ] Monitor app performance
-- [ ] Check for user-reported issues
-- [ ] Verify sample data accuracy
-
-### Weekly Tasks
-- [ ] Review error logs
-- [ ] Update comparable companies data
-- [ ] Test all analysis types
-- [ ] Backup user data (if applicable)
-
-### Monthly Tasks
-- [ ] Update dependencies
-- [ ] Review and update documentation
-- [ ] Performance optimization review
-- [ ] Security audit
-
-### Quarterly Tasks
-- [ ] Major feature updates
-- [ ] Code refactoring
-- [ ] User feedback analysis
-- [ ] Market data validation
-
----
-
-## Future Enhancements
-
-### Planned Features
-1. **Real-time Market Data Integration**
-2. **Advanced Risk Metrics**
-3. **Portfolio Analysis**
-4. **API Endpoints**
-5. **Mobile Optimization**
-
-### Technical Improvements
-1. **Async Processing**
-2. **Database Integration**
-3. **Advanced Caching**
-4. **Machine Learning Integration**
-5. **Real-time Collaboration**
-
----
-
-This documentation provides a comprehensive understanding of the financial valuation engine's architecture, implementation, and maintenance requirements. Use it as a reference for debugging, extending, and maintaining the application. 
+This technical documentation provides comprehensive information about the Financial Valuation Engine's architecture, algorithms, and implementation details. For additional support, refer to the main README or contact the development team. 

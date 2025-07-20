@@ -14,6 +14,7 @@ import FinancialProjections from './form/FinancialProjections';
 import ValuationAssumptions from './form/ValuationAssumptions';
 import AdvancedAnalysis from './form/AdvancedAnalysis';
 import AnalysisSelection from './form/AnalysisSelection';
+import LoadingSpinner from './LoadingSpinner';
 
 const steps = [
   'Select Analyses',
@@ -246,74 +247,145 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
   };
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom align="center">
-        Financial Valuation Tool
-      </Typography>
-      
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-        {steps.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
-
-      {activeStep === 0 && (
-        <AnalysisSelection
-          analyses={formData.analyses}
-          onUpdate={(analyses) => setFormData(prev => ({ ...prev, analyses }))}
-        />
-      )}
-
-      {activeStep === 1 && (
-        <FinancialProjections
-          data={formData.financialProjections}
-          onUpdate={(data) => updateFormData('financialProjections', data)}
-        />
-      )}
-
-      {activeStep === 2 && (
-        <ValuationAssumptions
-          data={formData.valuationAssumptions}
-          onUpdate={(data) => updateFormData('valuationAssumptions', data)}
-        />
-      )}
-
-      {activeStep === 3 && (
-        <AdvancedAnalysis
-          data={formData.advancedAnalysis}
-          analyses={formData.analyses}
-          onUpdate={(data) => updateFormData('advancedAnalysis', data)}
-        />
-      )}
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-        <Button
-          disabled={activeStep === 0}
-          onClick={handleBack}
-        >
-          Back
-        </Button>
+    <Box className="fade-in">
+      <Paper 
+        sx={{ 
+          p: { xs: 2, md: 4 }, 
+          maxWidth: 1200, 
+          mx: 'auto',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+        }}
+        className="card-hover"
+      >
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography 
+            variant="h3" 
+            gutterBottom 
+            className="gradient-text"
+            sx={{ fontWeight: 700, mb: 1 }}
+          >
+            Financial Valuation Tool
+          </Typography>
+          <Typography 
+            variant="body1" 
+            color="text.secondary"
+            sx={{ maxWidth: 600, mx: 'auto' }}
+          >
+            Advanced DCF analysis with Monte Carlo simulations, sensitivity analysis, and scenario modeling
+          </Typography>
+        </Box>
         
-        {activeStep === steps.length - 1 ? (
+        <Stepper 
+          activeStep={activeStep} 
+          sx={{ 
+            mb: 4,
+            '& .MuiStepLabel-root .Mui-completed': {
+              color: 'secondary.main',
+            },
+            '& .MuiStepLabel-root .Mui-active': {
+              color: 'primary.main',
+            },
+          }}
+        >
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+
+        <Box sx={{ minHeight: 400 }}>
+          {loading ? (
+            <LoadingSpinner message="Running comprehensive valuation analysis..." />
+          ) : (
+            <>
+              {activeStep === 0 && (
+                <AnalysisSelection
+                  analyses={formData.analyses}
+                  onUpdate={(analyses) => setFormData(prev => ({ ...prev, analyses }))}
+                />
+              )}
+
+              {activeStep === 1 && (
+                <FinancialProjections
+                  data={formData.financialProjections}
+                  onUpdate={(data) => updateFormData('financialProjections', data)}
+                />
+              )}
+
+              {activeStep === 2 && (
+                <ValuationAssumptions
+                  data={formData.valuationAssumptions}
+                  onUpdate={(data) => updateFormData('valuationAssumptions', data)}
+                />
+              )}
+
+              {activeStep === 3 && (
+                <AdvancedAnalysis
+                  data={formData.advancedAnalysis}
+                  analyses={formData.analyses}
+                  onUpdate={(data) => updateFormData('advancedAnalysis', data)}
+                />
+              )}
+            </>
+          )}
+        </Box>
+
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            mt: 4,
+            pt: 3,
+            borderTop: '1px solid',
+            borderColor: 'grey.200',
+          }}
+        >
           <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={loading}
+            disabled={activeStep === 0}
+            onClick={handleBack}
+            variant="outlined"
+            sx={{ 
+              minWidth: 120,
+              borderRadius: 2,
+            }}
           >
-            {loading ? <CircularProgress size={24} /> : 'Run Valuation'}
+            Back
           </Button>
-        ) : (
-          <Button
-            variant="contained"
-            onClick={handleNext}
-          >
-            Next
-          </Button>
-        )}
-      </Box>
-    </Paper>
+          
+          {activeStep === steps.length - 1 ? (
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={loading}
+              sx={{ 
+                minWidth: 160,
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                },
+              }}
+            >
+              Run Valuation
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              sx={{ 
+                minWidth: 120,
+                borderRadius: 2,
+              }}
+            >
+              Next
+            </Button>
+          )}
+        </Box>
+      </Paper>
+    </Box>
   );
 };
 

@@ -1,337 +1,332 @@
 # Financial Valuation Engine
 
-A comprehensive, professional-grade financial valuation application built with FastAPI backend and React frontend. This tool provides enterprise-level DCF valuation, Monte Carlo simulation, comparable multiples analysis, and scenario testing - all with an intuitive, finance-professional-friendly interface.
+A comprehensive financial valuation platform with advanced DCF modeling, Monte Carlo simulations, sensitivity analysis, and scenario modeling capabilities.
 
-## Features
+## 🚀 Features
 
-### **Core Valuation Methods**
-- **WACC DCF**: Standard discounted cash flow using weighted average cost of capital
-- **APV DCF**: Adjusted present value method with tax shield calculations
-- **Mid-year vs Year-end conventions**: Flexible cash flow timing assumptions
+### Core Valuation Methods
+- **WACC DCF**: Traditional weighted average cost of capital discounted cash flow
+- **APV DCF**: Adjusted present value discounted cash flow
+- **Multiples Analysis**: Comparable company and transaction multiples
+- **Scenario Analysis**: Multiple scenario modeling with probability weights
 
-### **Advanced Analysis**
-- **Monte Carlo Simulation**: Uncertainty analysis with customizable probability distributions
-- **Comparable Multiples**: Peer company analysis using industry-standard ratios
-- **Scenario Analysis**: "What-if" testing with optimistic/pessimistic scenarios
-- **Sensitivity Analysis**: Parameter impact assessment with interactive visualizations
+### Advanced Analytics
+- **Monte Carlo Simulations**: 1,000-10,000 runs with custom variable distributions
+- **Sensitivity Analysis**: Multi-dimensional sensitivity tables
+- **Risk Assessment**: Statistical analysis with percentiles and confidence intervals
+- **Data Visualization**: Interactive charts and tables
 
-### **Professional UI/UX**
-- **User-friendly inputs**: Guided interfaces for debt schedules, sensitivity ranges, and scenarios
-- **Real-time validation**: Comprehensive error checking and warnings
-- **Interactive visualizations**: Charts, heatmaps, and distribution plots
-- **Export capabilities**: Excel and CSV downloads with professional formatting
+### User Experience
+- **Modern Web Interface**: React-based frontend with Material-UI
+- **Real-time Validation**: Form validation with error handling
+- **Data Export**: CSV download for all results
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Accessibility**: Full keyboard navigation and screen reader support
 
-### **Financial Best Practices**
-- **Consistent units**: All numbers in raw format (e.g., 1,000,000 for one million)
-- **Circular reference detection**: Prevents infinite loops in scenario definitions
-- **Terminal value warnings**: Alerts for unsustainable growth assumptions
-- **Outlier filtering**: Robust statistical analysis in multiples comparisons
-
-## Requirements
-
-### **Python Version**
-- Python 3.8 or higher
-
-### **Dependencies**
-```
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pandas>=1.5.0
-numpy>=1.21.0
-matplotlib>=3.5.0
-plotly>=5.0.0
-openpyxl>=3.0.0
-pydantic>=2.5.0
-python-multipart>=0.0.6
-```
-
-### **Frontend Requirements**
-- Node.js 16 or higher
-- npm or yarn package manager
-
-## Installation
-
-### **Option 1: Quick Start**
-```bash
-# Clone the repository
-git clone <repository-url>
-cd valuation
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
-
-# Start both services
-python start_app.py
-```
-
-### **Option 2: Virtual Environment (Recommended)**
-```bash
-# Create virtual environment
-python -m venv .venv
-
-# Activate virtual environment
-# On Windows:
-.venv\Scripts\activate
-# On macOS/Linux:
-source .venv/bin/activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
-
-# Start both services
-python start_app.py
-```
-
-### **Option 3: Minimal Installation**
-```bash
-# Install only essential Python dependencies
-pip install -r requirements-minimal.txt
-
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
-
-# Start both services
-python start_app.py
-```
-
-## Quick Start Guide
-
-### **1. Launch the App**
-```bash
-python start_app.py
-```
-This will start both the FastAPI backend and React frontend:
-- **API**: http://localhost:8000
-- **Frontend**: http://localhost:3000
-- **API Documentation**: http://localhost:8000/docs
-
-### **2. Select Analyses**
-In the frontend interface, choose which valuation methods to run:
-- ✅ **WACC DCF** (recommended for most cases)
-- ✅ **APV DCF** (for companies with significant debt)
-- ✅ **Monte Carlo** (for uncertainty analysis)
-- ✅ **Comparable Multiples** (for peer comparison)
-- ✅ **Scenario Analysis** (for sensitivity testing)
-
-### **3. Enter Financial Data**
-Use the **Financial Projections** section to input your data:
-
-#### **Driver-Based Input (Recommended)**
-- **Revenue Series**: Enter projected revenues (e.g., `100000000,110000000,120000000`)
-- **EBIT Margin**: Expected operating margin as percentage
-- **CapEx Series**: Capital expenditure projections
-- **Depreciation Series**: Depreciation projections
-- **NWC Changes**: Net working capital changes
-
-#### **Direct FCF Input**
-- **Free Cash Flow Series**: Direct FCF projections if you prefer
-
-### **4. Set Valuation Assumptions**
-- **WACC**: Weighted average cost of capital
-- **Tax Rate**: Effective corporate tax rate
-- **Terminal Growth**: Long-term growth rate
-- **Mid-Year Convention**: Check if cash flows occur mid-year
-
-### **5. Configure Advanced Analysis**
-- **Monte Carlo**: Define probability distributions for key variables
-- **Comparable Multiples**: Upload peer company CSV file
-- **Scenarios**: Set optimistic/pessimistic parameter overrides
-- **Sensitivity**: Define parameter ranges for testing
-
-### **6. Run Valuation**
-Click **"Run Valuation"** to execute all selected analyses.
-
-## Sample Data
-
-### **Sample Inputs**
-Use `sample_inputs.txt` for quick testing:
-```
-# Revenue Series (comma-separated)
-100000000,110000000,120000000,130000000,140000000
-
-# EBIT Margin (%)
-20
-
-# Capital Expenditure Series
-10000000,11000000,12000000,13000000,14000000
-
-# Number of Shares Outstanding
-100000000
-```
-
-### **Sample Comparable Companies**
-Use `sample_comps.csv` for multiples analysis:
-```csv
-Company,EV,EBITDA,Revenue,EV/EBITDA,EV/Revenue,P/E
-Peer_Company_1,1500000000,180000000,1200000000,8.33,1.25,16.67
-```
-
-## Configuration
-
-### **Input Format Standards**
-- **All numbers are raw**: Enter 1,000,000 for one million (not 1)
-- **Comma-separated series**: Use commas to separate year-by-year values
-- **Percentages as decimals**: 20% = 0.20, 5% = 0.05
-
-### **Debt Schedule**
-- **Year 0**: Current debt (today)
-- **Year 1+**: Projected debt at end of each year
-- **Multi-year schedule**: Enter debt for each forecast year
-
-### **Monte Carlo Specifications**
-```json
-{
-  "wacc": {"dist": "normal", "params": {"loc": 0.10, "scale": 0.01}},
-  "terminal_growth": {"dist": "uniform", "params": {"low": 0.01, "high": 0.03}}
-}
-```
-
-### **Scenario Analysis**
-```json
-{
-  "Optimistic": {"ebit_margin": 0.25, "terminal_growth": 0.03, "wacc": 0.09},
-  "Pessimistic": {"ebit_margin": 0.15, "terminal_growth": 0.01, "wacc": 0.12}
-}
-```
-
-## Understanding Results
-
-### **DCF Valuation**
-- **Enterprise Value**: Total value of the business
-- **Equity Value**: Value available to shareholders
-- **Price per Share**: Equity value divided by shares outstanding
-
-### **Monte Carlo Results**
-- **Distribution Statistics**: Mean, median, standard deviation
-- **Confidence Intervals**: 5th, 25th, 50th, 75th, 95th percentiles
-- **Visualizations**: Histograms showing value distributions
-
-### **Comparable Multiples**
-- **Implied Enterprise Values**: Based on peer company ratios
-- **Multiple Statistics**: Mean, median, range across peers
-- **Outlier Filtering**: Removes extreme values for robustness
-
-### **Scenario Analysis**
-- **Base Case**: Your current assumptions
-- **Optimistic**: Better performance scenario
-- **Pessimistic**: Worse performance scenario
-
-## Important Notes
-
-### **Terminal Value Warnings**
-- **High Growth (>5%)**: May not be sustainable in perpetuity
-- **Negative Growth (<-2%)**: Implies business shrinkage
-
-### **Circular References**
-- The app detects and warns about circular references in scenario definitions
-- This prevents infinite loops in parameter calculations
-
-### **Data Validation**
-- **Revenue**: Must be positive
-- **Series Lengths**: All financial series must have the same length
-- **WACC vs Growth**: Terminal growth must be less than WACC
-
-## Troubleshooting
-
-### **Common Issues**
-
-#### **"No valid multiples found"**
-- Ensure your CSV file has columns with format `EV/EBITDA`, `P/E`, etc.
-- Check that the CSV contains numeric data
-
-#### **Negative valuations**
-- Verify EBIT margin is properly set (not 0%)
-- Check that revenue projections are positive
-- Ensure terminal growth < WACC
-
-#### **Import errors**
-- Install missing dependencies: `pip install -r requirements.txt`
-- Check Python version (3.8+ required)
-
-#### **Memory issues with large datasets**
-- Reduce Monte Carlo simulation count
-- Use smaller comparable company datasets
-
-### **Performance Tips**
-- **Monte Carlo**: Use 1,000-2,000 runs for quick testing, 5,000+ for production
-- **Large datasets**: Consider filtering comparable companies
-- **Multiple scenarios**: Limit to 3-5 scenarios for faster processing
-
-## File Structure
+## 📁 Project Structure
 
 ```
 valuation/
-├── app.py                 # Main Streamlit application
-├── valuation.py           # Core DCF calculation functions
-├── drivers.py            # Financial projection helpers
-├── montecarlo.py         # Monte Carlo simulation engine
-├── multiples.py          # Comparable multiples analysis
-├── scenario.py           # Scenario analysis functions
-├── sensitivity.py        # Sensitivity analysis functions
-├── params.py             # Data structures and validation
-├── requirements.txt      # Full dependency list
-├── requirements-minimal.txt  # Essential dependencies only
-├── sample_inputs.txt     # Example input values
-├── sample_comps.csv      # Example comparable companies
-├── README.md            # This file
-└── test/                # Unit tests
-    └── test_basic.py    # Basic functionality tests
+├── backend/               # Python backend package
+│   ├── core/             # Core business logic
+│   │   ├── valuation/    # Valuation modules
+│   │   │   ├── dcf.py    # DCF calculations
+│   │   │   ├── monte_carlo.py # Monte Carlo simulations
+│   │   │   ├── sensitivity.py # Sensitivity analysis
+│   │   │   ├── scenario.py    # Scenario modeling
+│   │   │   └── multiples.py   # Multiples analysis
+│   │   ├── financial/    # Financial calculations
+│   │   │   ├── drivers.py     # Financial drivers
+│   │   │   └── wacc.py        # WACC calculations
+│   │   └── models/       # Data models
+│   │       └── params.py      # Valuation parameters
+│   ├── services/         # Service layer
+│   │   └── valuation_service.py # Business logic
+│   ├── utils/            # Utilities
+│   │   ├── exceptions.py # Custom exceptions
+│   │   ├── validation.py # Data validation
+│   │   └── cache.py      # Caching system
+│   ├── config/           # Configuration
+│   │   └── logging.py    # Logging setup
+│   └── main.py           # FastAPI application
+├── frontend/             # React frontend
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   └── App.js        # Main application
+│   └── package.json      # Frontend dependencies
+├── data/                 # Sample data files
+│   ├── sample_inputs.txt # Sample valuation inputs
+│   └── sample_comps.csv  # Sample comparable companies
+├── scripts/              # Build automation
+├── test/                 # Test suite
+├── docker-compose.yml    # Docker orchestration
+├── Makefile              # Build automation
+├── pyproject.toml        # Python project config
+├── setup.py              # Package setup
+├── start_app.py          # Application launcher
+└── README.md             # This file
 ```
 
-## Testing
+## 🛠️ Technology Stack
 
-Run the test suite to verify functionality:
+### Backend
+- **Python 3.8+**: Core programming language
+- **FastAPI**: Modern, fast web framework
+- **Pandas**: Data manipulation and analysis
+- **NumPy**: Numerical computations
+- **SciPy**: Statistical functions
+- **Pydantic**: Data validation
+
+### Frontend
+- **React 18**: Modern React with hooks
+- **Material-UI**: UI component library
+- **React Router**: Client-side routing
+- **Custom Hooks**: Reusable logic
+
+### Development Tools
+- **Docker**: Containerization
+- **GitHub Actions**: CI/CD pipeline
+- **Pytest**: Testing framework
+- **ESLint**: Code linting
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8 or higher
+- Node.js 16 or higher
+- Git
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/pranayupreti/valuation.git
+   cd valuation
+   ```
+
+2. **Set up Python environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Set up frontend**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+4. **Start the application**
+   ```bash
+   python start_app.py
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+### Alternative: Docker Installation
+
 ```bash
-pytest test/
+# Build and start with Docker
+docker-compose up -d
+
+# Or use Makefile
+make docker-up
 ```
 
-## Contributing
+## 📖 Usage Guide
 
+### 1. Analysis Selection
+Choose from available valuation methods:
+- **WACC DCF**: Traditional DCF with WACC discount rate
+- **APV DCF**: Adjusted present value approach
+- **Monte Carlo**: Probabilistic analysis with custom distributions
+- **Sensitivity**: Multi-dimensional sensitivity analysis
+- **Multiples**: Comparable company analysis
+- **Scenarios**: Multiple scenario modeling
+
+### 2. Financial Projections
+Input financial data using two modes:
+- **Driver-Based**: Input key drivers (revenue growth, margins, etc.)
+- **Direct Input**: Input cash flows directly
+
+### 3. Valuation Assumptions
+Configure key parameters:
+- **WACC**: Weighted average cost of capital
+- **Terminal Growth**: Long-term growth rate
+- **Tax Rate**: Corporate tax rate
+- **Mid-Year Convention**: DCF timing convention
+
+### 4. Advanced Analysis
+Configure advanced features:
+- **Monte Carlo**: Variable distributions and simulation runs
+- **Sensitivity**: Parameter ranges and step sizes
+- **Scenarios**: Multiple scenarios with probabilities
+- **Multiples**: Comparable company data upload
+
+### 5. Results Analysis
+Review comprehensive results:
+- **Valuation Summary**: Key metrics and ranges
+- **Detailed Tables**: Year-by-year projections
+- **Statistical Analysis**: Percentiles and confidence intervals
+- **Export Options**: CSV download functionality
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8001
+API_WORKERS=4
+
+# Frontend Configuration
+REACT_APP_API_URL=http://localhost:8001
+REACT_APP_ENVIRONMENT=development
+
+# Database Configuration (if using)
+DATABASE_URL=sqlite:///./valuation.db
+
+# Logging Configuration
+LOG_LEVEL=INFO
+LOG_FILE=valuation.log
+```
+
+### Sample Data
+The application includes sample data files:
+- `sample_inputs.txt`: Example valuation inputs
+- `sample_comps.csv`: Sample comparable companies
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest test/test_valuation.py
+
+# Run with coverage
+pytest --cov=valuation
+```
+
+### Frontend Tests
+```bash
+cd frontend
+npm test
+```
+
+### Integration Tests
+```bash
+# Test API endpoints
+pytest test/test_api.py
+
+# Test frontend integration
+pytest test/test_frontend_integration.py
+```
+
+## 🚀 Deployment
+
+### Docker Deployment
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+```
+
+### Manual Deployment
+```bash
+# Backend
+cd api
+uvicorn main:app --host 0.0.0.0 --port 8001
+
+# Frontend
+cd frontend
+npm run build
+npm start
+```
+
+## 📊 API Documentation
+
+### Core Endpoints
+- `POST /api/valuation`: Run valuation analysis
+- `GET /health`: Health check
+- `GET /docs`: Interactive API documentation
+
+### Request Format
+```json
+{
+  "analyses": ["WACC DCF", "Monte Carlo"],
+  "financial_projections": {
+    "input_mode": "driver",
+    "revenue": [1000000, 1100000, 1210000],
+    "ebit_margin": 0.20,
+    "capex": [50000, 55000, 60500],
+    "depreciation": [40000, 44000, 48400],
+    "nwc_changes": [10000, 11000, 12100],
+    "share_count": 100000000,
+    "cost_of_debt": 0.05,
+    "current_debt": 0,
+    "debt_schedule": {}
+  },
+  "valuation_assumptions": {
+    "wacc": 0.12,
+    "terminal_growth": 0.025,
+    "tax_rate": 0.25,
+    "mid_year_convention": true
+  },
+  "advanced_analysis": {
+    "mc_runs": 2000,
+    "variable_specs": {
+      "wacc": {
+        "dist": "normal",
+        "params": {"loc": 0.12, "scale": 0.01}
+      }
+    }
+  }
+}
+```
+
+## 🤝 Contributing
+
+### Development Setup
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch: `git checkout -b feature/new-feature`
 3. Make your changes
 4. Add tests for new functionality
-5. Submit a pull request
+5. Run the test suite: `pytest`
+6. Commit your changes: `git commit -am 'Add new feature'`
+7. Push to the branch: `git push origin feature/new-feature`
+8. Submit a pull request
 
-## License
+### Code Style
+- **Python**: Follow PEP 8 guidelines
+- **JavaScript**: Use ESLint configuration
+- **Documentation**: Add JSDoc comments for functions
+- **Tests**: Maintain >90% code coverage
+
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🙏 Acknowledgments
 
-For issues, questions, or feature requests:
-1. Check the troubleshooting section above
-2. Review the sample data files for examples
-3. Open an issue on GitHub with detailed information
+- **Financial Modeling**: Based on industry-standard DCF methodologies
+- **Statistical Analysis**: Leverages SciPy and NumPy for robust calculations
+- **UI/UX**: Built with Material-UI for consistent, accessible design
+- **Testing**: Comprehensive test suite with pytest
 
-## Version History
+## 📞 Support
 
-### **v2.0 (Current)**
-- ✅ Complete UI/UX redesign with guided inputs
-- ✅ Consistent unit standardization (raw numbers)
-- ✅ Enhanced error handling and validation
-- ✅ Professional output formatting
-- ✅ Comprehensive documentation
-
-### **v1.0**
-- Basic DCF functionality
-- Simple Monte Carlo simulation
-- Basic multiples analysis
+For questions, issues, or contributions:
+- **Issues**: [GitHub Issues](https://github.com/pranayupreti/valuation/issues)
+- **Email**: pranay@example.com
+- **Documentation**: [Technical Documentation](TECHNICAL_DOCUMENTATION.md)
 
 ---
 
-**Author: Pranay Upreti**
-
-**Built for finance professionals**
+**Built with ❤️ by Pranay Upreti**

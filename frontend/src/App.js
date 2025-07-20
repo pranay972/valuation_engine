@@ -1,52 +1,54 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Container, Box } from '@mui/material';
 
+// Components
 import Header from './components/Header';
+import Footer from './components/Footer';
 import ValuationForm from './components/ValuationForm';
 import Results from './components/Results';
+
+// Theme
+import { theme } from './theme';
+
+// Styles
 import './App.css';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1f77b4',
-    },
-    secondary: {
-      main: '#ff7f0e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 'bold',
-      textAlign: 'center',
-      marginBottom: '0.5rem',
-    },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 'bold',
-      marginBottom: '1rem',
-    },
-  },
-});
-
+/**
+ * Main application component
+ * Handles routing and global state management
+ */
 function App() {
+  // Global state for results and loading
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Handle navigation back to form
+   * Clears results and redirects to home
+   */
+  const handleBackToForm = () => {
+    setResults(null);
+    window.location.href = '/';
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+        <Box 
+          sx={{ 
+            minHeight: '100vh', 
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <Header />
-          <Container maxWidth="xl" sx={{ py: 4 }}>
+          
+          <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 }, flex: 1 }}>
             <Routes>
               <Route 
                 path="/" 
@@ -64,15 +66,14 @@ function App() {
                   <Results 
                     results={results} 
                     loading={loading}
-                    onBack={() => {
-                      setResults(null);
-                      window.location.href = '/';
-                    }}
+                    onBack={handleBackToForm}
                   />
                 } 
               />
             </Routes>
           </Container>
+          
+          <Footer />
         </Box>
       </Router>
     </ThemeProvider>
