@@ -1,123 +1,35 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "financial-valuation-engine"
 version = "2.0.0"
 description = "A comprehensive financial valuation platform with advanced DCF modeling, Monte Carlo simulations, sensitivity analysis, and scenario modeling"
-authors = [
-    {name = "Pranay Upreti", email = "pranay@example.com"}
-]
+authors = ["Pranay Upreti <upreti.pranay@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.8"
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Financial and Insurance Industry",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Office/Business :: Financial :: Investment",
-]
-dependencies = [
-    "fastapi>=0.100.0",
-    "uvicorn>=0.20.0",
-    "pydantic>=2.0.0",
-    "pandas>=1.5.0",
-    "numpy>=1.21.0",
-    "scipy>=1.9.0",
-]
+package-mode = false
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=22.0.0",
-    "flake8>=5.0.0",
-    "mypy>=1.0.0",
-    "pre-commit>=2.20.0",
-]
-test = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-asyncio>=0.20.0",
-]
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+fastapi = ">=0.100.0"
+uvicorn = ">=0.20.0"
+pydantic = ">=2.0.0"
+pandas = ">=1.5.0"
+numpy = ">=1.21.0"
+scipy = ">=1.9.0"
+python-multipart = "^0.0.20"
 
-[project.urls]
-Homepage = "https://github.com/yourusername/financial-valuation-engine"
-Repository = "https://github.com/yourusername/financial-valuation-engine"
-Documentation = "https://github.com/yourusername/financial-valuation-engine/blob/main/README.md"
-Issues = "https://github.com/yourusername/financial-valuation-engine/issues"
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-cov = ">=4.0.0"
+black = ">=22.0.0"
+flake8 = ">=5.0.0"
+mypy = ">=1.0.0"
+pre-commit = ">=2.20.0"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["backend*"]
+[tool.poetry.group.test.dependencies]
+pytest = ">=7.0.0"
+pytest-cov = ">=4.0.0"
+pytest-asyncio = ">=0.20.0"
 
-[tool.black]
-line-length = 88
-target-version = ['py38']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "W503"]
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    ".venv",
-    ".eggs",
-    "*.egg",
-]
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
-
-[tool.pytest.ini_options]
-testpaths = ["backend/tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "--cov=backend",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml",
-]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-] 
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api" 

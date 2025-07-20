@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
+  Box,
+  Button,
   Paper,
-  Stepper,
   Step,
   StepLabel,
-  Button,
-  Box,
-  Typography,
-  CircularProgress,
+  Stepper,
+  Typography
 } from '@mui/material';
-import FinancialProjections from './form/FinancialProjections';
-import ValuationAssumptions from './form/ValuationAssumptions';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdvancedAnalysis from './form/AdvancedAnalysis';
 import AnalysisSelection from './form/AnalysisSelection';
+import FinancialProjections from './form/FinancialProjections';
+import ValuationAssumptions from './form/ValuationAssumptions';
 import LoadingSpinner from './LoadingSpinner';
 
 const steps = [
@@ -46,22 +45,22 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
       taxRate: 0.25,
       midYearConvention: false,
     },
-          advancedAnalysis: {
-        mcRuns: 1000,
-        variableSpecs: {
-          wacc: {
-            dist: 'normal',
-            params: { loc: 0.12, scale: 0.01 }  // Reduced std dev from 0.02 to 0.01
-          },
-          terminal_growth: {
-            dist: 'uniform',  // Changed from 'normal' to 'uniform'
-            params: { low: 0.015, high: 0.025 }  // Reduced max from 0.035 to 0.025
-          }
+    advancedAnalysis: {
+      mcRuns: 1000,
+      variableSpecs: {
+        wacc: {
+          dist: 'normal',
+          params: { loc: 0.12, scale: 0.01 }  // Reduced std dev from 0.02 to 0.01
         },
-        scenarios: {},
-        sensitivityRanges: {},
-        compsData: null,
+        terminal_growth: {
+          dist: 'uniform',  // Changed from 'normal' to 'uniform'
+          params: { low: 0.015, high: 0.025 }  // Reduced max from 0.035 to 0.025
+        }
       },
+      scenarios: {},
+      sensitivityRanges: {},
+      compsData: null,
+    },
   });
 
   const handleNext = () => {
@@ -75,11 +74,11 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
   // Validation function
   const validateFormData = (data) => {
     const errors = [];
-    
+
     if (!data.analyses || data.analyses.length === 0) {
       errors.push("Please select at least one analysis type");
     }
-    
+
     if (data.financialProjections.inputMode === 'driver') {
       if (!data.financialProjections.revenue || data.financialProjections.revenue.length === 0) {
         errors.push("Revenue series is required");
@@ -93,7 +92,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
       if (!data.financialProjections.nwcChanges || data.financialProjections.nwcChanges.length === 0) {
         errors.push("NWC changes series is required");
       }
-      
+
       // Check series lengths match
       const series = [
         data.financialProjections.revenue,
@@ -101,7 +100,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         data.financialProjections.depreciation,
         data.financialProjections.nwcChanges
       ].filter(s => s && s.length > 0);
-      
+
       if (series.length > 1) {
         const lengths = series.map(s => s.length);
         if (new Set(lengths).size > 1) {
@@ -113,14 +112,14 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         errors.push("FCF series is required");
       }
     }
-    
+
     return errors;
   };
 
   const handleSubmit = async () => {
     // Create a copy of formData for processing
     let processedData = { ...formData };
-    
+
     // Auto-clean analyses: remove Sensitivity if no ranges configured
     if (processedData.analyses.includes('Sensitivity')) {
       const hasSensitivityRanges = Object.keys(processedData.advancedAnalysis.sensitivityRanges || {}).length > 0;
@@ -143,33 +142,33 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
     try {
       // Fixed convertSensitivityRanges function - remove the division by 100
       const convertSensitivityRanges = (ranges) => {
-          console.log('Converting sensitivity ranges:', ranges);
-          const converted = {};
-          for (const [param, config] of Object.entries(ranges)) {
-              console.log('Processing param:', param, 'config:', config);
-              if (config && typeof config === 'object' && 'min' in config && 'max' in config && 'steps' in config) {
-                  const { min, max, steps } = config;
-                  const values = [];
-                  for (let i = 0; i < steps; i++) {
-                      const value = min + (max - min) * (i / (steps - 1));
-                      // Don't divide by 100 - send as decimal values
-                      values.push(value);
-                  }
-                  converted[param] = values;
-                  console.log('Converted values for', param, ':', values);
-              } else {
-                  console.log('Invalid config for', param, ':', config);
-              }
+        console.log('Converting sensitivity ranges:', ranges);
+        const converted = {};
+        for (const [param, config] of Object.entries(ranges)) {
+          console.log('Processing param:', param, 'config:', config);
+          if (config && typeof config === 'object' && 'min' in config && 'max' in config && 'steps' in config) {
+            const { min, max, steps } = config;
+            const values = [];
+            for (let i = 0; i < steps; i++) {
+              const value = min + (max - min) * (i / (steps - 1));
+              // Don't divide by 100 - send as decimal values
+              values.push(value);
+            }
+            converted[param] = values;
+            console.log('Converted values for', param, ':', values);
+          } else {
+            console.log('Invalid config for', param, ':', config);
           }
-          console.log('Final converted ranges:', converted);
-          return converted;
+        }
+        console.log('Final converted ranges:', converted);
+        return converted;
       };
 
       // Transform data to match backend API expectations (camelCase to snake_case)
       const requestData = {
         // Analysis types (use processed analyses)
         analyses: processedData.analyses,
-        
+
         // Financial projections (map camelCase to snake_case)
         revenue: processedData.financialProjections.revenue,
         ebit_margin: processedData.financialProjections.ebitMargin,
@@ -177,7 +176,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         depreciation: processedData.financialProjections.depreciation,
         nwc_changes: processedData.financialProjections.nwcChanges,
         fcf_series: processedData.financialProjections.fcfSeries,
-        
+
         // Valuation assumptions (map camelCase to snake_case)
         terminal_growth: processedData.valuationAssumptions.terminalGrowth,
         wacc: processedData.valuationAssumptions.wacc,
@@ -186,7 +185,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         share_count: processedData.financialProjections.shareCount,
         cost_of_debt: processedData.financialProjections.costOfDebt,
         debt_schedule: processedData.financialProjections.debtSchedule,
-        
+
         // Advanced analysis
         mc_runs: processedData.advancedAnalysis.mcRuns,
         variable_specs: processedData.advancedAnalysis.variableSpecs,
@@ -202,7 +201,10 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
       console.log('Comps data being sent:', processedData.advancedAnalysis.compsData);
       console.log('Variable specs being sent:', requestData.variable_specs);
 
-      const response = await fetch('/api/valuate', {
+      // Use environment variable for backend URL in production
+      const apiBase = process.env.REACT_APP_API_URL || '';
+      console.log('API base:', apiBase);
+      const response = await fetch(`${apiBase}/api/valuation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +225,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
 
       const result = await response.json();
       console.log('Received result:', result);
-      
+
       // Extract the results from the response structure
       if (result.success && result.results) {
         setResults(result.results);
@@ -232,8 +234,8 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         throw new Error('Invalid response format from server');
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error running valuation: ' + error.message);
+      console.error('Error running valuation:', error);
+      console.error('Error running valuation message: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -248,10 +250,10 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
 
   return (
     <Box className="fade-in">
-      <Paper 
-        sx={{ 
-          p: { xs: 2, md: 4 }, 
-          maxWidth: 1200, 
+      <Paper
+        sx={{
+          p: { xs: 2, md: 4 },
+          maxWidth: 1200,
           mx: 'auto',
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
@@ -260,26 +262,26 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
         className="card-hover"
       >
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography 
-            variant="h3" 
-            gutterBottom 
+          <Typography
+            variant="h3"
+            gutterBottom
             className="gradient-text"
             sx={{ fontWeight: 700, mb: 1 }}
           >
             Financial Valuation Tool
           </Typography>
-          <Typography 
-            variant="body1" 
+          <Typography
+            variant="body1"
             color="text.secondary"
             sx={{ maxWidth: 600, mx: 'auto' }}
           >
             Advanced DCF analysis with Monte Carlo simulations, sensitivity analysis, and scenario modeling
           </Typography>
         </Box>
-        
-        <Stepper 
-          activeStep={activeStep} 
-          sx={{ 
+
+        <Stepper
+          activeStep={activeStep}
+          sx={{
             mb: 4,
             '& .MuiStepLabel-root .Mui-completed': {
               color: 'secondary.main',
@@ -333,10 +335,10 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
           )}
         </Box>
 
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
             mt: 4,
             pt: 3,
             borderTop: '1px solid',
@@ -347,20 +349,20 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
             disabled={activeStep === 0}
             onClick={handleBack}
             variant="outlined"
-            sx={{ 
+            sx={{
               minWidth: 120,
               borderRadius: 2,
             }}
           >
             Back
           </Button>
-          
+
           {activeStep === steps.length - 1 ? (
             <Button
               variant="contained"
               onClick={handleSubmit}
               disabled={loading}
-              sx={{ 
+              sx={{
                 minWidth: 160,
                 borderRadius: 2,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -375,7 +377,7 @@ const ValuationForm = ({ setResults, setLoading, loading }) => {
             <Button
               variant="contained"
               onClick={handleNext}
-              sx={{ 
+              sx={{
                 minWidth: 120,
                 borderRadius: 2,
               }}
