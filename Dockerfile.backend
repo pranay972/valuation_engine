@@ -18,7 +18,7 @@ COPY setup.py .
 COPY pyproject.toml .
 
 # Install the package
-RUN pip install -e .
+# RUN pip install -e .
 
 # Expose port
 EXPOSE 8000

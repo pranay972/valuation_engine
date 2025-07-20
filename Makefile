@@ -22,7 +22,7 @@ install:
 # Run tests
 test:
 	@echo "Running backend tests..."
-	python -m pytest backend/tests/ -v
+	python -m pytest tests/ -v
 	@echo "Running frontend tests..."
 	cd frontend && npm test -- --watchAll=false
 

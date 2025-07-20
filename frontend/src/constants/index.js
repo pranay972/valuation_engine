@@ -5,7 +5,7 @@
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8001',
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
   ENDPOINTS: {
     VALUATION: '/api/valuation',
     HEALTH: '/health',
@@ -18,7 +18,7 @@ export const FORM_CONFIG = {
   DEFAULT_VALUES: {
     // Analysis Selection
     analyses: ['WACC DCF'],
-    
+
     // Financial Projections
     inputMode: 'driver',
     revenue: [],
@@ -31,13 +31,13 @@ export const FORM_CONFIG = {
     costOfDebt: 0.05,
     currentDebt: 0,
     debtSchedule: {},
-    
+
     // Valuation Assumptions
     wacc: 0.12,
     terminalGrowth: 0.025,
     taxRate: 0.25,
     midYearConvention: true,
-    
+
     // Advanced Analysis
     mcRuns: 2000,
     variableSpecs: {
@@ -54,7 +54,7 @@ export const FORM_CONFIG = {
     scenarios: {},
     compsData: null,
   },
-  
+
   VALIDATION: {
     MIN_MC_RUNS: 100,
     MAX_MC_RUNS: 10000,
@@ -79,13 +79,13 @@ export const UI_CONFIG = {
     TRANSITION_DURATION: 300,
     HOVER_TRANSFORM: 'translateY(-2px)',
   },
-  
+
   SPACING: {
     CARD_PADDING: 4,
     SECTION_MARGIN: 4,
     GRID_SPACING: 3,
   },
-  
+
   COLORS: {
     SUCCESS: '#10b981',
     WARNING: '#f59e0b',
@@ -110,7 +110,7 @@ export const ERROR_MESSAGES = {
     SERVER_ERROR: 'Server error. Please try again later.',
     VALIDATION_ERROR: 'Invalid data provided.',
   },
-  
+
   FORM: {
     REQUIRED_FIELD: 'This field is required.',
     INVALID_NUMBER: 'Please enter a valid number.',
@@ -118,7 +118,7 @@ export const ERROR_MESSAGES = {
     INVALID_RANGE: 'Minimum must be less than maximum.',
     INVALID_STEPS: 'Steps must be between 2 and 20.',
   },
-  
+
   FILE: {
     INVALID_TYPE: 'Please select a valid CSV file.',
     TOO_LARGE: 'File size must be less than 5MB.',

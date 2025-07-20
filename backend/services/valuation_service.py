@@ -228,7 +228,7 @@ class ValuationService:
             if "WACC DCF" in analyses:
                 self.logger.info("Running WACC DCF analysis")
                 ev, equity, ps = calc_dcf_series(params)
-                results["WACC DCF"] = {
+                results["wacc_dcf"] = {
                     "enterprise_value": float(ev),
                     "equity_value": float(equity),
                     "price_per_share": float(ps) if ps is not None else None
@@ -238,7 +238,7 @@ class ValuationService:
             if "APV" in analyses:
                 self.logger.info("Running APV analysis")
                 ev, equity, ps = calc_apv(params)
-                results["APV"] = {
+                results["apv"] = {
                     "enterprise_value": float(ev),
                     "equity_value": float(equity),
                     "price_per_share": float(ps) if ps is not None else None
@@ -248,25 +248,25 @@ class ValuationService:
             if "Monte Carlo" in analyses:
                 self.logger.info("Running Monte Carlo analysis")
                 mc_results = run_monte_carlo(params, runs=mc_runs)
-                results["Monte Carlo"] = mc_results
+                results["monte_carlo"] = mc_results
             
             # Run Multiples
             if "Multiples" in analyses and comps_data:
                 self.logger.info("Running Multiples analysis")
                 multiples_results = run_multiples_analysis(params, comps_data)
-                results["Multiples"] = multiples_results
+                results["multiples"] = multiples_results
             
             # Run Scenarios
             if "Scenarios" in analyses and params.scenarios:
                 self.logger.info("Running Scenarios analysis")
                 scenario_results = run_scenarios(params)
-                results["Scenarios"] = scenario_results
+                results["scenarios"] = scenario_results
             
             # Run Sensitivity
             if "Sensitivity" in analyses and params.sensitivity_ranges:
                 self.logger.info("Running Sensitivity analysis")
                 sensitivity_results = run_sensitivity_analysis(params)
-                results["Sensitivity"] = sensitivity_results
+                results["sensitivity"] = sensitivity_results
             
             return results
             
