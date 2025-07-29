@@ -1,0 +1,24 @@
+name: Generate Badges
+
+on:
+  workflow_run:
+    workflows: ["Run Tests", "CI/CD Pipeline"]
+    types:
+      - completed
+
+jobs:
+  generate-badges:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'skipped'
+    
+    steps:
+    - name: Generate Badges
+      uses: schneegans/dynamic-badges-action@v1.6.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: your-gist-id-here
+        filename: valuation-badges.json
+        label: tests
+        message: ${{ github.event.workflow_run.conclusion }}
+        namedLogo: github
+        color: ${{ github.event.workflow_run.conclusion == 'success' && 'green' || 'red' }} 

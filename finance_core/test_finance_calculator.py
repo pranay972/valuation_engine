@@ -6,14 +6,18 @@ Tests all major components including DCF, APV, multiples, scenarios,
 sensitivity analysis, and Monte Carlo simulation.
 """
 
-import unittest
+
 import json
 import tempfile
 import os
 import sys
+import unittest
 from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
+
+# Add finance_core to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import the modules to test
 from finance_calculator import (

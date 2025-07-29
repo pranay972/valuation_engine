@@ -1,0 +1,61 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    name: Run All Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml') }}
+        
+    - name: Install dependencies
+      run: |
+        poetry install --no-interaction --no-root
+        
+    - name: Run finance_core tests
+      run: |
+        poetry run python -m pytest finance_core/test_finance_calculator.py -v
+        
+    - name: Run backend tests
+      run: |
+        poetry run python -m pytest backend/tests/ -v
+        
+    - name: Test API integration
+      run: |
+        poetry run python backend/run.py &
+        sleep 10
+        poetry run python backend/test_swagger.py
+        
+    - name: Test Swagger UI accessibility
+      run: |
+        curl -f http://localhost:5001/health
+        curl -f http://localhost:5001/static/swagger.json
+        curl -f http://localhost:5001/api/docs 

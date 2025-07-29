@@ -1,0 +1,462 @@
+"""
+Swagger/OpenAPI configuration for the valuation API.
+"""
+
+from flask_swagger_ui import get_swaggerui_blueprint
+import json
+
+# Swagger UI configuration
+SWAGGER_URL = '/api/docs'
+API_URL = '/static/swagger.json'
+
+# Swagger UI blueprint
+swagger_ui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "Valuation API Documentation"
+    }
+)
+
+# OpenAPI specification
+swagger_config = {
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Financial Valuation API",
+        "description": "A comprehensive API for financial valuation calculations including DCF, APV, Comparable Multiples, Scenario Analysis, Sensitivity Analysis, and Monte Carlo Simulation.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Valuation API Support",
+            "email": "support@valuation.com"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:5001",
+            "description": "Development server"
+        }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health Check",
+                "description": "Check if the API is running",
+                "tags": ["Health"],
+                "responses": {
+                    "200": {
+                        "description": "API is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {"type": "string", "example": "healthy"},
+                                        "message": {"type": "string", "example": "Valuation API is running"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/valuation/health": {
+            "get": {
+                "summary": "Valuation Service Health Check",
+                "description": "Check if the valuation service is running",
+                "tags": ["Health"],
+                "responses": {
+                    "200": {
+                        "description": "Valuation service is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {"type": "string", "example": "healthy"},
+                                        "service": {"type": "string", "example": "valuation"},
+                                        "message": {"type": "string", "example": "Valuation service is running"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/valuation/sample": {
+            "get": {
+                "summary": "Get Sample Data",
+                "description": "Get sample valuation data for testing",
+                "tags": ["Valuation"],
+                "responses": {
+                    "200": {
+                        "description": "Sample data retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "company_name": {"type": "string", "example": "TechCorp Inc."},
+                                        "valuation_date": {"type": "string", "example": "2024-01-01"},
+                                        "financial_inputs": {
+                                            "type": "object",
+                                            "properties": {
+                                                "revenue": {
+                                                    "type": "array",
+                                                    "items": {"type": "number"},
+                                                    "example": [1250.0, 1375.0, 1512.5, 1663.8, 1830.1]
+                                                },
+                                                "ebit_margin": {"type": "number", "example": 0.18},
+                                                "tax_rate": {"type": "number", "example": 0.25}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {"type": "string"},
+                                        "details": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/valuation/calculate": {
+            "post": {
+                "summary": "Calculate Valuation",
+                "description": "Calculate comprehensive valuation using DCF, APV, and other methods",
+                "tags": ["Valuation"],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["company_name", "valuation_date", "financial_inputs"],
+                                "properties": {
+                                    "company_name": {
+                                        "type": "string",
+                                        "description": "Name of the company being valued",
+                                        "example": "TechCorp Inc."
+                                    },
+                                    "valuation_date": {
+                                        "type": "string",
+                                        "description": "Valuation date in YYYY-MM-DD format",
+                                        "example": "2024-01-01"
+                                    },
+                                    "financial_inputs": {
+                                        "type": "object",
+                                        "required": [
+                                            "revenue", "ebit_margin", "tax_rate", "capex", 
+                                            "depreciation", "nwc_changes", "terminal_growth", 
+                                            "wacc", "share_count", "cost_of_debt"
+                                        ],
+                                        "properties": {
+                                            "revenue": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Annual revenue projections (USD millions)",
+                                                "example": [1250.0, 1375.0, 1512.5, 1663.8, 1830.1]
+                                            },
+                                            "ebit_margin": {
+                                                "type": "number",
+                                                "description": "EBIT margin as decimal (e.g., 0.18 for 18%)",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "example": 0.18
+                                            },
+                                            "tax_rate": {
+                                                "type": "number",
+                                                "description": "Corporate tax rate as decimal",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "example": 0.25
+                                            },
+                                            "capex": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Annual capital expenditure (USD millions)",
+                                                "example": [187.5, 206.3, 226.9, 249.6, 274.5]
+                                            },
+                                            "depreciation": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Annual depreciation expense (USD millions)",
+                                                "example": [125.0, 137.5, 151.3, 166.4, 183.0]
+                                            },
+                                            "nwc_changes": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Annual net working capital changes (USD millions)",
+                                                "example": [62.5, 68.8, 75.6, 83.2, 91.5]
+                                            },
+                                            "terminal_growth": {
+                                                "type": "number",
+                                                "description": "Terminal growth rate as decimal",
+                                                "minimum": 0,
+                                                "maximum": 0.1,
+                                                "example": 0.025
+                                            },
+                                            "wacc": {
+                                                "type": "number",
+                                                "description": "Weighted average cost of capital as decimal",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "example": 0.095
+                                            },
+                                            "share_count": {
+                                                "type": "number",
+                                                "description": "Number of shares outstanding (millions)",
+                                                "minimum": 0,
+                                                "example": 45.2
+                                            },
+                                            "cost_of_debt": {
+                                                "type": "number",
+                                                "description": "Pre-tax cost of debt as decimal",
+                                                "minimum": 0,
+                                                "maximum": 1,
+                                                "example": 0.065
+                                            },
+                                            "amortization": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Annual amortization expense (optional)",
+                                                "example": [25.0, 27.5, 30.3, 33.3, 36.6]
+                                            },
+                                            "other_non_cash": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Other non-cash adjustments (optional)",
+                                                "example": [10.0, 11.0, 12.1, 13.3, 14.6]
+                                            },
+                                            "other_working_capital": {
+                                                "type": "array",
+                                                "items": {"type": "number"},
+                                                "description": "Other working capital adjustments (optional)",
+                                                "example": [5.0, 5.5, 6.1, 6.7, 7.3]
+                                            },
+                                            "cash_balance": {
+                                                "type": "number",
+                                                "description": "Cash and cash equivalents (optional)",
+                                                "example": 50.0
+                                            },
+                                            "debt_schedule": {
+                                                "type": "object",
+                                                "description": "Annual debt levels by year index (optional)",
+                                                "example": {
+                                                    "0": 150.0,
+                                                    "1": 135.0,
+                                                    "2": 120.0,
+                                                    "3": 105.0,
+                                                    "4": 90.0
+                                                }
+                                            },
+                                            "risk_free_rate": {
+                                                "type": "number",
+                                                "description": "Risk-free rate (optional)",
+                                                "example": 0.03
+                                            },
+                                            "market_risk_premium": {
+                                                "type": "number",
+                                                "description": "Market risk premium (optional)",
+                                                "example": 0.06
+                                            },
+                                            "levered_beta": {
+                                                "type": "number",
+                                                "description": "Levered equity beta (optional)",
+                                                "example": 1.2
+                                            },
+                                            "unlevered_beta": {
+                                                "type": "number",
+                                                "description": "Unlevered beta (optional)",
+                                                "example": 1.0
+                                            },
+                                            "target_debt_ratio": {
+                                                "type": "number",
+                                                "description": "Target debt-to-value ratio (optional)",
+                                                "example": 0.3
+                                            },
+                                            "comparable_multiples": {
+                                                "type": "object",
+                                                "description": "Comparable company multiples (optional)",
+                                                "example": {
+                                                    "EV/EBITDA": [12.5, 14.2, 13.8, 15.1],
+                                                    "P/E": [18.5, 22.1, 20.8, 24.3]
+                                                }
+                                            },
+                                            "scenarios": {
+                                                "type": "object",
+                                                "description": "Scenario analysis definitions (optional)",
+                                                "example": {
+                                                    "optimistic": {
+                                                        "ebit_margin": 0.22,
+                                                        "terminal_growth": 0.03
+                                                    },
+                                                    "pessimistic": {
+                                                        "ebit_margin": 0.14,
+                                                        "terminal_growth": 0.015
+                                                    }
+                                                }
+                                            },
+                                            "sensitivity_analysis": {
+                                                "type": "object",
+                                                "description": "Sensitivity analysis parameter ranges (optional)",
+                                                "example": {
+                                                    "wacc_range": [0.075, 0.085, 0.095, 0.105, 0.115],
+                                                    "ebit_margin_range": [0.14, 0.16, 0.18, 0.20, 0.22]
+                                                }
+                                            },
+                                            "monte_carlo_specs": {
+                                                "type": "object",
+                                                "description": "Monte Carlo simulation specifications (optional)",
+                                                "example": {
+                                                    "ebit_margin": {
+                                                        "distribution": "normal",
+                                                        "params": {"mean": 0.18, "std": 0.02}
+                                                    },
+                                                    "wacc": {
+                                                        "distribution": "normal",
+                                                        "params": {"mean": 0.095, "std": 0.01}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Valuation calculated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "company_name": {"type": "string", "example": "TechCorp Inc."},
+                                        "valuation_date": {"type": "string", "example": "2024-01-01"},
+                                        "dcf_valuation": {
+                                            "type": "object",
+                                            "properties": {
+                                                "enterprise_value": {"type": "number", "example": 1453.5},
+                                                "equity_value": {"type": "number", "example": 1353.5},
+                                                "price_per_share": {"type": "number", "example": 29.94},
+                                                "free_cash_flows_after_tax_fcff": {
+                                                    "type": "array",
+                                                    "items": {"type": "number"},
+                                                    "example": [73.8, 81.0, 89.3, 98.1, 108.0]
+                                                },
+                                                "terminal_value": {"type": "number", "example": 1200.0},
+                                                "present_value_of_terminal": {"type": "number", "example": 950.0}
+                                            }
+                                        },
+                                        "apv_valuation": {
+                                            "type": "object",
+                                            "properties": {
+                                                "enterprise_value": {"type": "number", "example": 1367.4},
+                                                "equity_value": {"type": "number", "example": 1267.4},
+                                                "price_per_share": {"type": "number", "example": 28.04}
+                                            }
+                                        },
+                                        "comparable_valuation": {
+                                            "type": "object",
+                                            "properties": {
+                                                "implied_values": {"type": "object"},
+                                                "summary": {"type": "object"}
+                                            }
+                                        },
+                                        "scenario_analysis": {
+                                            "type": "object",
+                                            "properties": {
+                                                "scenarios": {"type": "object"}
+                                            }
+                                        },
+                                        "sensitivity_analysis": {
+                                            "type": "object",
+                                            "properties": {
+                                                "wacc_sensitivity": {"type": "object"},
+                                                "ebit_margin_sensitivity": {"type": "object"},
+                                                "terminal_growth_sensitivity": {"type": "object"}
+                                            }
+                                        },
+                                        "monte_carlo_simulation": {
+                                            "type": "object",
+                                            "properties": {
+                                                "enterprise_value": {"type": "object"},
+                                                "equity_value": {"type": "object"},
+                                                "price_per_share": {"type": "object"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {"type": "string", "example": "Validation error"},
+                                        "details": {"type": "string", "example": "Missing required field: financial_inputs"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {"type": "string", "example": "Internal server error"},
+                                        "details": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Health check endpoints"
+        },
+        {
+            "name": "Valuation",
+            "description": "Valuation calculation endpoints"
+        }
+    ],
+    "components": {
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {"type": "string"},
+                    "details": {"type": "string"}
+                }
+            }
+        }
+    }
+} 

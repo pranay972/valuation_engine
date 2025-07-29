@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_DEBUG=True
+      - FLASK_ENV=development
+    volumes:
+      - .:/app
+      - ../finance_core:/app/finance_core
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3 
