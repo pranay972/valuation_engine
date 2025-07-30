@@ -26,7 +26,13 @@ cd backend
 # Check if tests directory exists
 if [ -d "tests" ]; then
     echo "Running pytest..."
-    if command -v python &> /dev/null; then
+    if [ -f "pyproject.toml" ] && command -v poetry &> /dev/null; then
+        echo "Using Poetry to run tests..."
+        echo "Running API tests..."
+        poetry run python -m pytest tests/test_app_simple.py -v --tb=short 2>/dev/null || echo "API tests failed"
+        echo "Running finance core tests..."
+        poetry run python -m pytest tests/test_finance_core.py -v --tb=short 2>/dev/null || echo "Finance core tests failed"
+    elif command -v python &> /dev/null; then
         echo "Running API tests..."
         python -m pytest tests/test_app.py -v --tb=short 2>/dev/null || echo "API tests failed or pytest not installed"
         echo "Running finance core tests..."
@@ -47,7 +53,12 @@ fi
 echo -e "\n${YELLOW}Testing API endpoints...${NC}"
 
 # Check if Python is available for starting the server
-if command -v python &> /dev/null || command -v python3 &> /dev/null; then
+if [ -f "pyproject.toml" ] && command -v poetry &> /dev/null; then
+    # Start Flask server in background using Poetry
+    echo "Starting Flask server with Poetry..."
+    poetry run python app.py > /dev/null 2>&1 &
+    SERVER_PID=$!
+elif command -v python &> /dev/null || command -v python3 &> /dev/null; then
     # Start Flask server in background
     echo "Starting Flask server..."
     if command -v python &> /dev/null; then

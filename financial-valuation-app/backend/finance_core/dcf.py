@@ -16,9 +16,9 @@ Key Functions:
 from typing import Tuple, Optional, Dict, List
 import numpy as np
 
-from drivers import project_ebit_series, project_free_cash_flow
-from params import ValuationParameters
-from wacc import calculate_unlevered_cost_of_equity, calculate_iterative_wacc
+from .drivers import project_ebit_series, project_free_cash_flow
+from .params import ValuationParameters
+from .wacc import calculate_unlevered_cost_of_equity, calculate_iterative_wacc
 
 def calculate_net_debt_for_valuation(valuation_parameters: ValuationParameters) -> float:
     """

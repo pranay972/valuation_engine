@@ -13,8 +13,8 @@ import pandas as pd
 # Suppress pandas FutureWarning about DataFrame concatenation
 warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 
-from params import ValuationParameters
-from dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
+from .params import ValuationParameters
+from .dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
 
 def create_parameter_copy(params: ValuationParameters) -> ValuationParameters:
     """Create a copy of parameters for Monte Carlo."""
