@@ -44,7 +44,9 @@ jobs:
         cd backend
         if [ -d "tests" ]; then
           echo "Running API tests..."
-          python -m pytest tests/test_app.py -v --tb=short
+          python -m pytest tests/test_app_simple.py -v --tb=short
+          echo "Running comprehensive endpoint tests..."
+          python -m pytest tests/test_endpoints_minimal.py -v --tb=short
           echo "Running finance core tests..."
           python -m pytest tests/test_finance_core.py -v --tb=short
         else
