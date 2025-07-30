@@ -43,6 +43,10 @@ function AnalysisSelection() {
     
     // Navigate with selected analyses as URL parameters
     const analysisIds = selectedAnalyses.map(a => a.id).join(',');
+    
+    // Store selected analysis types in localStorage for later use
+    localStorage.setItem('selectedAnalysisTypes', JSON.stringify(selectedAnalyses));
+    
     navigate(`/analysis/${analysisIds}`);
   };
 

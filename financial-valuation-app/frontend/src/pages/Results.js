@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { DCFChart, SensitivityChart, MonteCarloChart } from '../components/Charts';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
 
 function Results() {
   const { analysisId } = useParams();
   const navigate = useNavigate();
   const [allResults, setAllResults] = useState([]);
   const [analysisTypes, setAnalysisTypes] = useState([]);
+  const [selectedAnalysisIds, setSelectedAnalysisIds] = useState([]);
+  const [selectedAnalysisTypes, setSelectedAnalysisTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,11 +21,25 @@ function Results() {
     try {
       // Parse multiple analysis IDs
       const analysisIds = analysisId.split(',');
-      
+      setSelectedAnalysisIds(analysisIds);
+
       // Fetch analysis types to get names
       const typesResponse = await axios.get('/api/analysis/types');
       const allTypes = typesResponse.data;
-      
+
+      // Get selected analysis types from localStorage
+      const storedSelectedTypes = localStorage.getItem('selectedAnalysisTypes');
+      let selectedTypes = [];
+      if (storedSelectedTypes) {
+        try {
+          const parsed = JSON.parse(storedSelectedTypes);
+          selectedTypes = parsed.map(analysis => analysis.id);
+          setSelectedAnalysisTypes(selectedTypes);
+        } catch (err) {
+          console.error('Error parsing stored analysis types:', err);
+        }
+      }
+
       // Fetch results for each analysis
       const resultsPromises = analysisIds.map(async (id) => {
         try {
@@ -37,10 +53,17 @@ function Results() {
 
       const results = await Promise.all(resultsPromises);
       const validResults = results.filter(result => result !== null);
-      
+
       setAllResults(validResults);
       setAnalysisTypes(allTypes);
       setLoading(false);
+
+      // Debug logging
+      console.log('Analysis IDs from URL:', analysisIds);
+      console.log('Selected Analysis IDs:', selectedAnalysisIds);
+      console.log('Selected Analysis Types:', selectedTypes);
+      console.log('All Results:', validResults);
+      console.log('First Result Structure:', validResults[0] ? Object.keys(validResults[0]) : 'No results');
     } catch (err) {
       setError('Failed to load results');
       setLoading(false);
@@ -65,16 +88,22 @@ function Results() {
     return analysis ? analysis.name : analysisTypeId;
   };
 
+  const wasAnalysisSelected = (analysisTypeId) => {
+    const isSelected = selectedAnalysisTypes.includes(analysisTypeId);
+    console.log(`Checking if ${analysisTypeId} was selected:`, isSelected, 'Selected Types:', selectedAnalysisTypes);
+    return isSelected;
+  };
+
   const renderDCFResults = (results) => {
     if (!results.dcf_valuation) return null;
-    
+
     const dcf = results.dcf_valuation;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginBottom: '20px' }}>
           📊 DCF Valuation (WACC)
         </h2>
-        
+
         <div className="grid">
           <div className="card">
             <h3>Enterprise Value</h3>
@@ -138,14 +167,14 @@ function Results() {
 
   const renderAPVResults = (results) => {
     if (!results.apv_valuation) return null;
-    
+
     const apv = results.apv_valuation;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #28a745', paddingBottom: '10px', marginBottom: '20px' }}>
           💰 APV Valuation
         </h2>
-        
+
         <div className="grid">
           <div className="card">
             <h3>Enterprise Value</h3>
@@ -187,14 +216,14 @@ function Results() {
 
   const renderComparableResults = (results) => {
     if (!results.comparable_valuation) return null;
-    
+
     const comp = results.comparable_valuation;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #ffc107', paddingBottom: '10px', marginBottom: '20px' }}>
           📈 Comparable Multiples
         </h2>
-        
+
         <div className="grid">
           <div className="card">
             <h3>Mean Enterprise Value</h3>
@@ -236,13 +265,13 @@ function Results() {
 
   const renderScenarioResults = (results) => {
     if (!results.scenarios) return null;
-    
+
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #17a2b8', paddingBottom: '10px', marginBottom: '20px' }}>
           🎯 Scenario Analysis
         </h2>
-        
+
         <div className="grid">
           {Object.entries(results.scenarios).map(([scenario, data]) => (
             <div key={scenario} className="card">
@@ -269,14 +298,14 @@ function Results() {
 
   const renderSensitivityResults = (results) => {
     if (!results.sensitivity_analysis) return null;
-    
+
     const sens = results.sensitivity_analysis;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #fd7e14' }}>
         <h2 style={{ borderBottom: '2px solid #fd7e14', paddingBottom: '10px', marginBottom: '20px' }}>
           📉 Sensitivity Analysis
         </h2>
-        
+
         {Object.entries(sens).map(([parameter, data]) => (
           <div key={parameter} className="card" style={{ marginBottom: '20px' }}>
             <h3 style={{ textTransform: 'capitalize' }}>{parameter.replace('_', ' ')}</h3>
@@ -310,14 +339,14 @@ function Results() {
 
   const renderMonteCarloResults = (results) => {
     if (!results.monte_carlo_simulation) return null;
-    
+
     const mc = results.monte_carlo_simulation;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>
           🎲 Monte Carlo Simulation
         </h2>
-        
+
         <div className="grid">
           <div className="card">
             <h3>Mean Enterprise Value</h3>
@@ -393,37 +422,31 @@ function Results() {
   return (
     <div className="container">
       <h1>Financial Valuation Results</h1>
-      
-      {/* Since we're getting one comprehensive result with all analysis types, show them once */}
+
+      {/* Show only the analysis types that were selected by the user */}
       {allResults.length > 0 && (
         <div>
-          {/* DCF Results */}
-          {renderDCFResults(allResults[0])}
-          
-          {/* APV Results */}
-          {renderAPVResults(allResults[0])}
-          
-          {/* Comparable Multiples Results */}
-          {renderComparableResults(allResults[0])}
-          
-          {/* Scenario Analysis Results */}
-          {renderScenarioResults(allResults[0])}
-          
-          {/* Sensitivity Analysis Results */}
-          {renderSensitivityResults(allResults[0])}
-          
-          {/* Monte Carlo Results */}
-          {renderMonteCarloResults(allResults[0])}
+          {/* DCF Results - only if selected */}
+          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(allResults[0])}
+
+          {/* APV Results - only if selected */}
+          {wasAnalysisSelected('apv') && renderAPVResults(allResults[0])}
+
+          {/* Comparable Multiples Results - only if selected */}
+          {wasAnalysisSelected('multiples') && renderComparableResults(allResults[0])}
+
+          {/* Scenario Analysis Results - only if selected */}
+          {wasAnalysisSelected('scenario') && renderScenarioResults(allResults[0])}
+
+          {/* Sensitivity Analysis Results - only if selected */}
+          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(allResults[0])}
+
+          {/* Monte Carlo Results - only if selected */}
+          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(allResults[0])}
         </div>
       )}
 
-      <div className="card">
-        <h2>Charts</h2>
-        <p>Comparison charts would go here</p>
-        <div style={{ height: '300px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p>Chart Area - Multiple Analysis Comparison</p>
-        </div>
-      </div>
+
 
       <div className="card">
         <button className="button" onClick={() => navigate('/')}>
