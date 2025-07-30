@@ -37,7 +37,7 @@ jobs:
     - name: Install Node.js dependencies
       run: |
         cd financial-valuation-app/frontend
-        npm ci
+        npm install
         
     - name: Run backend tests
       run: |
