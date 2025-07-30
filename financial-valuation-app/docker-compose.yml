@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: financial_valuation_backend
     ports:
-      - "8000:5000"
+      - "8001:5000"  # Changed from 8000 to 8001
     volumes:
       - ./backend:/app
     environment:
@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile
     container_name: financial_valuation_frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"  # Changed from 3000 to 3001
     volumes:
       - ./frontend:/app
       - /app/node_modules
