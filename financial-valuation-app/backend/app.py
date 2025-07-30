@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 import sys
 import os
@@ -8,8 +8,14 @@ import io
 # Add finance_core to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'finance_core'))
 
+# Import Swagger UI
+from swagger import swagger_ui_blueprint
+
 app = Flask(__name__)
 CORS(app)
+
+# Register Swagger UI blueprint
+app.register_blueprint(swagger_ui_blueprint)
 
 # Analysis types
 ANALYSIS_TYPES = [
@@ -405,6 +411,11 @@ def upload_csv():
     except Exception as e:
         return jsonify({'error': f'CSV parsing error: {str(e)}'}), 400
 
+@app.route('/static/swagger.json', methods=['GET'])
+def swagger_json():
+    """Serve the OpenAPI specification"""
+    return send_from_directory('static', 'swagger.json')
+
 @app.route('/', methods=['GET'])
 def root():
     return jsonify({
@@ -415,7 +426,8 @@ def root():
             'create_analysis': '/api/analysis',
             'submit_inputs': '/api/valuation/{id}/inputs',
             'get_results': '/api/results/{id}/results',
-            'get_status': '/api/results/{id}/status'
+            'get_status': '/api/results/{id}/status',
+            'swagger_ui': '/api/docs'
         }
     })
 

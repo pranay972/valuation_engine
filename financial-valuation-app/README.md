@@ -42,7 +42,8 @@ docker-compose up --build -d
 
 - **Frontend**: http://localhost:3000 (React application)
 - **Backend API**: http://localhost:8000 (Flask API)
-- **Backend Root**: http://localhost:8000/ (API documentation)
+- **Swagger UI**: http://localhost:8000/api/docs (Interactive API documentation)
+- **Backend Root**: http://localhost:8000/ (API information)
 
 ## 📁 Project Structure
 
@@ -100,6 +101,9 @@ docker-compose up --build -d
 
 ## 📊 API Endpoints
 
+### Interactive Documentation
+- **Swagger UI**: http://localhost:8000/api/docs - Interactive API documentation with testing interface
+
 ### Analysis Management
 - `GET /api/analysis/types` - Get available analysis types
 - `POST /api/analysis` - Create new analysis
@@ -110,6 +114,10 @@ docker-compose up --build -d
 ### Results
 - `GET /api/results/{id}/results` - Get analysis results
 - `GET /api/results/{id}/status` - Get processing status
+
+### Data Management
+- `GET /api/csv/sample` - Download sample CSV template
+- `POST /api/csv/upload` - Upload CSV data file
 
 ## 🚀 Next Steps
 
