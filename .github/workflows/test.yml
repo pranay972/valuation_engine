@@ -1,0 +1,80 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        pip install poetry
+        poetry config virtualenvs.create false
+        poetry install --only main --no-interaction --no-ansi
+        
+    - name: Install Node.js dependencies
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Run backend tests
+      run: |
+        cd backend
+        if [ -d "tests" ]; then
+          echo "Running API tests..."
+          python -m pytest tests/test_app_simple.py -v --tb=short
+          echo "Running comprehensive endpoint tests..."
+          python -m pytest tests/test_endpoints_minimal.py -v --tb=short
+          echo "Running finance core tests..."
+          python -m pytest tests/test_finance_core.py -v --tb=short
+        else
+          echo "No backend tests directory found, skipping..."
+        fi
+        
+    - name: Run frontend tests (if available)
+      run: |
+        cd frontend
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test -- --watchAll=false --passWithNoTests
+        else
+          echo "No frontend tests configured, skipping..."
+        fi
+        
+    - name: Test API endpoints
+      run: |
+        cd backend
+        # Start the Flask server in background
+        python app.py &
+        sleep 10
+        
+        # Test basic endpoints
+        curl -f http://localhost:5000/health
+        curl -f http://localhost:5000/api/analysis/types
+        curl -f http://localhost:5000/static/swagger.json
+        
+        # Test Swagger UI
+        curl -f http://localhost:5000/api/docs/
+        
+        echo "✅ All API tests passed!" 
