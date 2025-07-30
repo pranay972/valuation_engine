@@ -27,9 +27,15 @@ cd backend
 if [ -d "tests" ]; then
     echo "Running pytest..."
     if command -v python &> /dev/null; then
-        python -m pytest tests/ -v --tb=short 2>/dev/null || echo "pytest not installed, skipping backend tests (use Docker for full testing)"
+        echo "Running API tests..."
+        python -m pytest tests/test_app.py -v --tb=short 2>/dev/null || echo "API tests failed or pytest not installed"
+        echo "Running finance core tests..."
+        python -m pytest tests/test_finance_core.py -v --tb=short 2>/dev/null || echo "Finance core tests failed or pytest not installed"
     elif command -v python3 &> /dev/null; then
-        python3 -m pytest tests/ -v --tb=short 2>/dev/null || echo "pytest not installed, skipping backend tests (use Docker for full testing)"
+        echo "Running API tests..."
+        python3 -m pytest tests/test_app.py -v --tb=short 2>/dev/null || echo "API tests failed or pytest not installed"
+        echo "Running finance core tests..."
+        python3 -m pytest tests/test_finance_core.py -v --tb=short 2>/dev/null || echo "Finance core tests failed or pytest not installed"
     else
         echo "Python not found, skipping backend tests (use Docker for full testing)"
     fi

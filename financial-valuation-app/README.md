@@ -134,13 +134,20 @@ The application includes comprehensive testing:
 # Run backend tests only
 cd backend && python -m pytest tests/ -v
 
+# Run specific test suites
+cd backend && python -m pytest tests/test_app.py -v        # API tests
+cd backend && python -m pytest tests/test_finance_core.py -v  # Finance core logic tests
+
 # Run frontend tests only
 cd frontend && npm test
 ```
 
 ### CI/CD Testing
 - **GitHub Actions**: Automated tests run on every push and pull request
-- **Test Coverage**: Backend API endpoints and frontend components
+- **Test Coverage**: 
+  - Backend API endpoints and frontend components
+  - Finance core logic (DCF, APV, multiples, scenarios, sensitivity, Monte Carlo)
+  - JSON integration and error handling
 - **Integration Tests**: Full API endpoint testing with live server
 
 ## 🚀 Next Steps

@@ -43,7 +43,10 @@ jobs:
       run: |
         cd backend
         if [ -d "tests" ]; then
-          python -m pytest tests/ -v --tb=short
+          echo "Running API tests..."
+          python -m pytest tests/test_app.py -v --tb=short
+          echo "Running finance core tests..."
+          python -m pytest tests/test_finance_core.py -v --tb=short
         else
           echo "No backend tests directory found, skipping..."
         fi
