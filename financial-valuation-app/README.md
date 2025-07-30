@@ -97,6 +97,9 @@ docker-compose restart
 
 # Rebuild and start
 docker-compose up --build -d
+
+# Run tests locally
+./run_tests.sh
 ```
 
 ## 📊 API Endpoints
@@ -118,6 +121,27 @@ docker-compose up --build -d
 ### Data Management
 - `GET /api/csv/sample` - Download sample CSV template
 - `POST /api/csv/upload` - Upload CSV data file
+
+## 🧪 Testing
+
+The application includes comprehensive testing:
+
+### Local Testing
+```bash
+# Run all tests locally
+./run_tests.sh
+
+# Run backend tests only
+cd backend && python -m pytest tests/ -v
+
+# Run frontend tests only
+cd frontend && npm test
+```
+
+### CI/CD Testing
+- **GitHub Actions**: Automated tests run on every push and pull request
+- **Test Coverage**: Backend API endpoints and frontend components
+- **Integration Tests**: Full API endpoint testing with live server
 
 ## 🚀 Next Steps
 
