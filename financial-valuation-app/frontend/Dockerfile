@@ -16,5 +16,6 @@ COPY . .
 EXPOSE 3000
 
 # Start the application
+ENV DANGEROUSLY_DISABLE_HOST_CHECK=true
 ENV HOST=0.0.0.0
 CMD ["npm", "start"]
