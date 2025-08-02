@@ -16,4 +16,5 @@ COPY . .
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"] 
+ENV HOST=0.0.0.0
+CMD ["npm", "start"]
