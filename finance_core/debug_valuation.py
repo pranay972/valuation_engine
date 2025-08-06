@@ -14,21 +14,21 @@ from dataclasses import fields
 import pandas as pd
 
 # Import the finance calculator components
-from finance_calculator import CleanModularFinanceCalculator, create_financial_inputs_from_json, FinancialInputs
+from finance_calculator import FinancialValuationEngine, parse_financial_inputs, FinancialInputs
 from params import ValuationParameters
 from drivers import project_ebit_series, project_free_cash_flow
 from wacc import calculate_weighted_average_cost_of_capital, calculate_unlevered_cost_of_equity
 from dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
 from multiples import run_multiples_analysis
 from scenario import run_scenarios
-from sensitivity import run_sensitivity_analysis
+from sensitivity import perform_sensitivity_analysis
 from monte_carlo import run_monte_carlo
 
 class ValuationDebugger:
     """Debugger for the finance calculator with step-by-step validation."""
     
     def __init__(self):
-        self.calculator = CleanModularFinanceCalculator()
+        self.engine = FinancialValuationEngine()
         self.debug_info = []
         self.errors = []
         self.warnings = []
@@ -221,7 +221,7 @@ class ValuationDebugger:
         self.log_info("Step 6: Testing FinancialInputs creation...")
         
         try:
-            inputs = create_financial_inputs_from_json(data)
+            inputs = parse_financial_inputs(data)
             self.log_success("FinancialInputs object created successfully")
             return inputs
         except Exception as e:
@@ -233,7 +233,7 @@ class ValuationDebugger:
         self.log_info("Step 7: Testing ValuationParameters conversion...")
         
         try:
-            params = self.calculator._convert_to_valuation_params(inputs)
+            params = self.engine._convert_to_valuation_params(inputs)
             self.log_success("ValuationParameters object created successfully")
             return params
         except Exception as e:
@@ -245,7 +245,7 @@ class ValuationDebugger:
         self.log_info("Step 8: Testing DCF calculation...")
         
         try:
-            result = self.calculator.run_dcf_valuation(inputs)
+            result = self.engine.calculate_dcf_valuation(inputs)
             if "error" not in result:
                 self.log_success(f"DCF calculation successful - EV: ${result.get('enterprise_value', 0):,.0f}")
                 return True
@@ -261,7 +261,7 @@ class ValuationDebugger:
         self.log_info("Step 9: Testing APV calculation...")
         
         try:
-            result = self.calculator.run_apv_valuation(inputs)
+            result = self.engine.calculate_apv_valuation(inputs)
             if "error" not in result:
                 self.log_success(f"APV calculation successful - EV: ${result.get('enterprise_value', 0):,.0f}")
                 return True
@@ -281,7 +281,7 @@ class ValuationDebugger:
             return True
             
         try:
-            result = self.calculator.run_comparable_multiples(inputs)
+            result = self.engine.analyze_comparable_multiples(inputs)
             if "error" not in result:
                 self.log_success("Comparable multiples analysis successful")
                 return True
@@ -301,7 +301,7 @@ class ValuationDebugger:
             return True
             
         try:
-            result = self.calculator.run_scenario_analysis(inputs)
+            result = self.engine.perform_scenario_analysis(inputs)
             if isinstance(result, dict) and "scenarios" in result:
                 self.log_success("Scenario analysis successful")
                 return True
@@ -321,7 +321,7 @@ class ValuationDebugger:
             return True
             
         try:
-            result = self.calculator.run_sensitivity_analysis(inputs)
+            result = self.engine.perform_sensitivity_analysis(inputs)
             if isinstance(result, dict) and "sensitivity_results" in result:
                 self.log_success("Sensitivity analysis successful")
                 return True
@@ -341,7 +341,7 @@ class ValuationDebugger:
             return True
             
         try:
-            result = self.calculator.run_monte_carlo_simulation(inputs, runs=100)  # Reduced runs for testing
+            result = self.engine.simulate_monte_carlo(inputs, runs=100)  # Reduced runs for testing
             if "error" not in result:
                 self.log_success("Monte Carlo simulation successful")
                 return True
@@ -357,7 +357,7 @@ class ValuationDebugger:
         self.log_info("Step 14: Testing comprehensive valuation...")
         
         try:
-            result = self.calculator.run_comprehensive_valuation(inputs)
+            result = self.engine.perform_comprehensive_valuation(inputs)
             if "valuation_summary" in result:
                 self.log_success("Comprehensive valuation successful")
                 return True

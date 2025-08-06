@@ -118,16 +118,13 @@ def project_free_cash_flow(
     capital_expenditure: List[float],
     depreciation_expense: List[float],
     net_working_capital_changes: List[float],
-    corporate_tax_rate: float,
-    amortization_expense: Optional[List[float]] = None,
-    other_non_cash_items: Optional[List[float]] = None,
-    other_working_capital_items: Optional[List[float]] = None
+    corporate_tax_rate: float
 ) -> List[float]:
     """
     Compute comprehensive Free Cash Flow series using professional methodology.
     
     Uses the comprehensive FCF formula:
-    FCF = NOPAT + Depreciation + Amortization + Other Non-Cash Items - CapEx - ΔNWC - Other WC
+    FCF = NOPAT + Depreciation - CapEx - ΔNWC
     where NOPAT = EBIT × (1 - corporate_tax_rate)
     
     This implementation follows industry best practices for FCF calculation,
@@ -140,9 +137,6 @@ def project_free_cash_flow(
         depreciation_expense: List of depreciation values (USD)
         net_working_capital_changes: List of NWC changes (USD)
         corporate_tax_rate: Corporate tax rate as decimal (e.g., 0.21 for 21%)
-        amortization_expense: List of amortization values (USD, optional, defaults to zeros)
-        other_non_cash_items: List of other non-cash items (USD, optional, defaults to zeros)
-        other_working_capital_items: List of other WC items (USD, optional, defaults to zeros)
         
     Returns:
         List[float]: Projected Free Cash Flow values (USD)
@@ -162,48 +156,33 @@ def project_free_cash_flow(
             f"Corporate tax rate ({corporate_tax_rate:.1%}) must be between 0% and 100%"
         )
     
-    # Set default values for optional parameters
-    if amortization_expense is None:
-        amortization_expense = [0.0] * len(ebit_series)
-    if other_non_cash_items is None:
-        other_non_cash_items = [0.0] * len(ebit_series)
-    if other_working_capital_items is None:
-        other_working_capital_items = [0.0] * len(ebit_series)
+
     
     # Validate that all input lists have consistent lengths
     input_lengths = [
         len(ebit_series), 
         len(capital_expenditure), 
         len(depreciation_expense), 
-        len(net_working_capital_changes),
-        len(amortization_expense), 
-        len(other_non_cash_items), 
-        len(other_working_capital_items)
+        len(net_working_capital_changes)
     ]
     
     if len(set(input_lengths)) > 1:
         raise ValueError(
             f"All input lists must have the same length. "
             f"Lengths: EBIT={len(ebit_series)}, CapEx={len(capital_expenditure)}, "
-            f"Depreciation={len(depreciation_expense)}, NWC Changes={len(net_working_capital_changes)}, "
-            f"Amortization={len(amortization_expense)}, Other Non-Cash={len(other_non_cash_items)}, "
-            f"Other Working Capital={len(other_working_capital_items)}"
+            f"Depreciation={len(depreciation_expense)}, NWC Changes={len(net_working_capital_changes)}"
         )
     
     # Calculate FCF for each period
     free_cash_flow_series = []
-    for (ebit, capex, depreciation, nwc_change, amortization, 
-         other_non_cash, other_wc) in zip(ebit_series, capital_expenditure, 
-                                         depreciation_expense, net_working_capital_changes,
-                                         amortization_expense, other_non_cash_items, 
-                                         other_working_capital_items):
+    for (ebit, capex, depreciation, nwc_change) in zip(ebit_series, capital_expenditure, 
+                                                       depreciation_expense, net_working_capital_changes):
         
         # Calculate NOPAT (Net Operating Profit After Tax)
         net_operating_profit_after_tax = ebit * (1 - corporate_tax_rate)
         
         # Calculate comprehensive FCF
-        free_cash_flow = (net_operating_profit_after_tax + depreciation + amortization + 
-                         other_non_cash - capex - nwc_change - other_wc)
+        free_cash_flow = (net_operating_profit_after_tax + depreciation - capex - nwc_change)
         
         free_cash_flow_series.append(free_cash_flow)
     

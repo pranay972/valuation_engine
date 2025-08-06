@@ -86,8 +86,8 @@ def run_single_iteration(params: ValuationParameters, sample_values: Dict[str, f
     except Exception as e:
         return None
 
-def run_monte_carlo(params: ValuationParameters, runs: int = 1000, 
-                   random_seed: Optional[int] = None) -> Dict[str, pd.DataFrame]:
+def simulate_monte_carlo(params: ValuationParameters, runs: int, 
+                        random_seed: Optional[int] = None) -> Dict[str, pd.DataFrame]:
     """
     Run Monte Carlo simulation for valuation uncertainty analysis.
     

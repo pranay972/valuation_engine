@@ -1,49 +1,34 @@
 # Financial Valuation Application
 
-A simple and fast financial valuation system with React frontend and Flask backend.
+A professional financial valuation system with React frontend and Flask backend supporting 6 analysis methods.
 
-## 🏗️ Architecture
+## 🎯 Analysis Methods
 
-- **Frontend**: React with simple CSS styling
-- **Backend**: Flask with basic API endpoints
-- **Containerization**: Docker & Docker Compose
-
-## 📊 Analysis Types
-
-The application supports 6 professional financial valuation methods:
-
-1. **DCF Valuation (WACC)** - Standard discounted cash flow using weighted average cost of capital
-2. **APV Valuation** - Adjusted Present Value method separating unlevered value from financing effects
-3. **Comparable Multiples** - Relative valuation using peer company ratios
-4. **Scenario Analysis** - Multiple scenarios with different parameter combinations
-5. **Sensitivity Analysis** - Parameter impact analysis on key valuation drivers
-6. **Monte Carlo Simulation** - Risk analysis with probability distributions
+- **DCF (WACC)** - Standard discounted cash flow valuation
+- **APV** - Adjusted Present Value method
+- **Comparable Multiples** - Relative valuation using peer ratios
+- **Scenario Analysis** - Multiple parameter combinations
+- **Sensitivity Analysis** - Parameter impact analysis
+- **Monte Carlo** - Risk analysis with probability distributions
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
 - Docker and Docker Compose
 
-### Option 1: Quick Start (Recommended)
-
+### Start Application
 ```bash
+# Quick start (recommended)
 ./quick-start.sh
-```
 
-### Option 2: Manual Start
-
-```bash
-# Start the application
+# Or manual start
 docker-compose up --build -d
 ```
 
-### Access the Application
-
-- **Frontend**: http://localhost:3000 (React application)
-- **Backend API**: http://localhost:8000 (Flask API)
-- **Swagger UI**: http://localhost:8000/api/docs (Interactive API documentation)
-- **Backend Root**: http://localhost:8000/ (API information)
+### Access URLs
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **Swagger UI**: http://localhost:8000/api/docs
 
 ## 📁 Project Structure
 
@@ -53,37 +38,22 @@ financial-valuation-app/
 │   ├── src/
 │   │   ├── pages/          # Page components
 │   │   └── services/       # API services
-│   ├── package.json
-│   └── Dockerfile
+│   └── package.json
 ├── backend/                 # Flask backend
 │   ├── app.py              # Main Flask application
-│   ├── requirements.txt    # Python dependencies
 │   ├── finance_core/       # Financial calculation engine
-│   └── Dockerfile
+│   └── pyproject.toml
 ├── docker-compose.yml      # Docker orchestration
-├── quick-start.sh          # Quick start script
-└── README.md
+└── quick-start.sh          # Quick start script
 ```
 
 ## 📱 Application Flow
 
-### 1. Analysis Selection
-- Choose one or more analysis types using checkboxes
-- Visual feedback for selected analyses
-- Continue button shows count of selected analyses
+1. **Analysis Selection** - Choose one or more analysis types
+2. **Input Form** - Enter financial data (revenue, margins, WACC, etc.)
+3. **Results** - View detailed results and comparison charts
 
-### 2. Input Form
-- Shows all selected analyses at the top
-- Single form with financial inputs (revenue, margins, WACC, etc.)
-- Same inputs used for all selected analyses
-- Form validation and submission
-
-### 3. Results
-- **Individual Results**: Detailed results for each analysis type
-- **Comparison Summary**: Side-by-side comparison of all analyses
-- **Charts**: Placeholder for comparison charts
-
-## 🔧 Useful Commands
+## 🔧 Management Commands
 
 ```bash
 # View logs
@@ -98,23 +68,19 @@ docker-compose restart
 # Rebuild and start
 docker-compose up --build -d
 
-# Run tests locally
+# Run tests
 ./run_tests.sh
 ```
 
 ## 📊 API Endpoints
 
 ### Interactive Documentation
-- **Swagger UI**: http://localhost:8000/api/docs - Interactive API documentation with testing interface
+- **Swagger UI**: http://localhost:8000/api/docs
 
-### Analysis Management
+### Core Endpoints
 - `GET /api/analysis/types` - Get available analysis types
 - `POST /api/analysis` - Create new analysis
-
-### Valuation Processing
 - `POST /api/valuation/{id}/inputs` - Submit input data
-
-### Results
 - `GET /api/results/{id}/results` - Get analysis results
 - `GET /api/results/{id}/status` - Get processing status
 
@@ -124,39 +90,23 @@ docker-compose up --build -d
 
 ## 🧪 Testing
 
-The application includes comprehensive testing:
-
-### Local Testing
 ```bash
-# Run all tests locally
+# Run all tests
 ./run_tests.sh
 
-# Run backend tests only
+# Backend tests only
 cd backend && python -m pytest tests/ -v
 
-# Run specific test suites
-cd backend && python -m pytest tests/test_app.py -v        # API tests
-cd backend && python -m pytest tests/test_finance_core.py -v  # Finance core logic tests
-
-# Run frontend tests only
+# Frontend tests only
 cd frontend && npm test
 ```
 
-### CI/CD Testing
-- **GitHub Actions**: Automated tests run on every push and pull request
-- **Test Coverage**: 
-  - Backend API endpoints and frontend components
-  - Finance core logic (DCF, APV, multiples, scenarios, sensitivity, Monte Carlo)
-  - JSON integration and error handling
-- **Integration Tests**: Full API endpoint testing with live server
-
 ## 🚀 Next Steps
 
-1. **Start the application** using the quick start script
-2. **Access the frontend** at http://localhost:3000
-3. **Select an analysis type** from the 6 available options
-4. **Fill in the input form** with your financial data
-5. **View the results** with comprehensive analysis
+1. Start the application using `./quick-start.sh`
+2. Access the frontend at http://localhost:3000
+3. Select analysis types and enter financial data
+4. View comprehensive results and charts
 
 ## 🔮 Future Enhancements
 
@@ -170,12 +120,7 @@ cd frontend && npm test
 ## 🆘 Troubleshooting
 
 If you encounter issues:
-
-1. **Check logs**: `docker-compose logs -f`
-2. **Restart services**: `docker-compose restart`
-3. **Rebuild containers**: `docker-compose up --build -d`
-4. **Check Docker status**: `docker ps`
-
-## 📄 License
-
-This project is licensed under the MIT License. 
+1. Check logs: `docker-compose logs -f`
+2. Restart services: `docker-compose restart`
+3. Rebuild containers: `docker-compose up --build -d`
+4. Check Docker status: `docker ps` 
