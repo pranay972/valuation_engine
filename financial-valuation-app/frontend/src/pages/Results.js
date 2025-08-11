@@ -361,27 +361,36 @@ function Results() {
   const renderScenarioResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.scenario) return null;
+    if (!resultsData || !resultsData.scenarios) return null;
+
+    // The scenarios data is nested under resultsData.scenarios.scenarios
+    const scenarios = resultsData.scenarios.scenarios;
+    if (!scenarios) return null;
 
     return (
-      <div className="card" style={{ marginBottom: '30px' }}>
+      <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #17a2b8' }}>
         <h2 style={{ borderBottom: '2px solid #17a2b8', paddingBottom: '10px', marginBottom: '20px' }}>
           🎯 Scenario Analysis
         </h2>
 
+        {/* Detailed Scenario Breakdown */}
         <div className="grid">
-          {Object.entries(resultsData.scenario).map(([scenario, data]) => (
+          {Object.entries(scenarios).map(([scenario, data]) => (
             <div key={scenario} className="card">
-              <h3 style={{ textTransform: 'capitalize' }}>{scenario.replace('_', ' ')}</h3>
-              <p><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
-              <p><strong>Equity Value:</strong> {formatCurrency(data.equity)}</p>
-              <p><strong>Price per Share:</strong> ${data.price_per_share}</p>
+              <h3 style={{ textTransform: 'capitalize', color: scenario === 'Base Case' ? '#17a2b8' : scenario === 'Optimistic' ? '#28a745' : '#dc3545' }}>
+                {scenario.replace('_', ' ')}
+              </h3>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
+                <p style={{ color: '#007bff' }}><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
+                <p style={{ color: '#28a745' }}><strong>Equity Value:</strong> {formatCurrency(data.equity)}</p>
+                <p style={{ color: '#fd7e14' }}><strong>Price per Share:</strong> ${data.price_per_share}</p>
+              </div>
               {data.input_changes && (
-                <div style={{ marginTop: '10px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
-                  <strong>Input Changes:</strong>
+                <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <strong style={{ color: '#6c757d' }}>Input Changes:</strong>
                   {Object.entries(data.input_changes).map(([key, value]) => (
-                    <p key={key} style={{ margin: '2px 0', fontSize: '14px' }}>
-                      {key}: {Array.isArray(value) ? value.join(', ') : value}
+                    <p key={key} style={{ margin: '8px 0', fontSize: '14px', color: '#495057' }}>
+                      <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> {Array.isArray(value) ? value.join(', ') : value}
                     </p>
                   ))}
                 </div>
@@ -396,9 +405,9 @@ function Results() {
   const renderSensitivityResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.sensitivity) return null;
+    if (!resultsData || !resultsData.sensitivity_analysis) return null;
 
-    const sens = resultsData.sensitivity;
+    const sens = resultsData.sensitivity_analysis;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #fd7e14' }}>
         <h2 style={{ borderBottom: '2px solid #fd7e14', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -439,9 +448,9 @@ function Results() {
   const renderMonteCarloResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.monte_carlo) return null;
+    if (!resultsData || !resultsData.monte_carlo_simulation) return null;
 
-    const mc = resultsData.monte_carlo;
+    const mc = resultsData.monte_carlo_simulation;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>

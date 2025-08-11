@@ -67,7 +67,22 @@ function InputForm() {
     mc_terminal_growth_mean: 0.025,
     mc_terminal_growth_std: 0.005,
     mc_levered_beta_mean: 1.2,
-    mc_levered_beta_std: 0.1
+    mc_levered_beta_std: 0.1,
+
+    // Scenario Definitions
+    scenarios: {
+      "Base Case": {},
+      "Optimistic": {
+        ebit_margin: 0.22,
+        terminal_growth_rate: 0.035,
+        weighted_average_cost_of_capital: 0.085
+      },
+      "Pessimistic": {
+        ebit_margin: 0.14,
+        terminal_growth_rate: 0.015,
+        weighted_average_cost_of_capital: 0.115
+      }
+    }
   });
   const [loading, setLoading] = useState(false);
 
@@ -202,7 +217,8 @@ function InputForm() {
               std: parseFloat(formData.mc_levered_beta_std)
             }
           }
-        }
+        },
+        scenarios: formData.scenarios
       };
 
       // Submit inputs for each analysis

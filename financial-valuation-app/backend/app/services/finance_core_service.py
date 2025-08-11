@@ -315,14 +315,20 @@ class FinanceCoreService:
             elif analysis_type == 'scenario':
                 results = self.calculator.perform_scenario_analysis(fi)
                 logger.info("Scenario analysis completed successfully")
+                
+                # Extract summary values from the base case scenario
+                # The results structure has nested 'scenarios' with 'Base Case' as the key
+                scenarios_data = results.get('scenarios', {})
+                base_case = scenarios_data.get('Base Case', {})
+                
                 return {
                     'success': True,
                     'results': {
                         'scenarios': results
                     },
-                    'enterprise_value': results.get('base_case', {}).get('enterprise_value'),
-                    'equity_value': results.get('base_case', {}).get('equity_value'),
-                    'price_per_share': results.get('base_case', {}).get('price_per_share')
+                    'enterprise_value': base_case.get('ev'),  # 'ev' is the enterprise value
+                    'equity_value': base_case.get('equity'),  # 'equity' is the equity value
+                    'price_per_share': base_case.get('price_per_share')
                 }
             
             elif analysis_type == 'sensitivity':
