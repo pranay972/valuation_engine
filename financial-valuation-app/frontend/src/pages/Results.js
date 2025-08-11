@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
 import { analysisAPI, resultsAPI } from '../services/api';
@@ -13,10 +13,28 @@ function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [analysisStatus, setAnalysisStatus] = useState({});
+  const [isPolling, setIsPolling] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+  const pollingIntervalRef = useRef(null);
 
+  // Simple polling - just hit the API every 2 seconds
   useEffect(() => {
-    fetchResults();
-  }, [analysisId]);
+    if (selectedAnalysisIds.length === 0) return;
+
+    // Start polling
+    setIsPolling(true);
+    pollingIntervalRef.current = setInterval(() => {
+      fetchResults();
+    }, 2000);
+
+    // Cleanup
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [selectedAnalysisIds]);
 
   const fetchResults = async () => {
     try {
@@ -24,9 +42,10 @@ function Results() {
       const analysisIds = analysisId.split(',');
       setSelectedAnalysisIds(analysisIds);
 
-      // Fetch analysis types to get names
+      // Fetch analysis types
       const typesResponse = await analysisAPI.getAnalysisTypes();
       const allTypes = typesResponse.data.data;
+      setAnalysisTypes(allTypes);
 
       // Get selected analysis types from localStorage
       const storedSelectedTypes = localStorage.getItem('selectedAnalysisTypes');
@@ -74,25 +93,30 @@ function Results() {
       const validResults = results.filter(result => result !== null);
 
       setAllResults(validResults);
-      setAnalysisTypes(allTypes);
       setLoading(false);
 
-      // Debug logging
-      console.log('Analysis IDs from URL:', analysisIds);
-      console.log('Selected Analysis IDs:', selectedAnalysisIds);
-      console.log('Selected Analysis Types:', selectedTypes);
-      console.log('All Results:', validResults);
-      console.log('Analysis Statuses:', statusMap);
-      console.log('First Result Structure:', validResults[0] ? Object.keys(validResults[0]) : 'No results');
-      if (validResults[0] && validResults[0].data && validResults[0].data.results) {
-        console.log('Results Data Keys:', Object.keys(validResults[0].data.results));
-        console.log('Results Data Structure:', validResults[0].data.results);
+      // Stop polling if all analyses are complete
+      const allComplete = Object.values(statusMap).every(status =>
+        status.status === 'completed' || status.status === 'failed'
+      );
+
+      if (allComplete) {
+        setIsPolling(false);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
       }
+
     } catch (err) {
       setError('Failed to load results');
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchResults();
+  }, [analysisId]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -465,42 +489,22 @@ function Results() {
     </div>
   );
 
-  const renderProcessingStatus = () => {
-    const processingAnalyses = Object.values(analysisStatus).filter(status =>
-      status.status === 'processing' || status.status === 'pending'
-    );
-
-    if (processingAnalyses.length === 0) return null;
-
-    return (
-      <div className="container">
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <div className="spinner" style={{
-            width: '50px',
-            height: '50px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 20px'
-          }}></div>
+  const renderProcessingStatus = () => (
+    <div className="container">
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
           <h2>Analysis in Progress</h2>
-          <p>Your financial valuation is still being processed. Please wait while we complete the calculations.</p>
-          <div style={{ marginTop: '20px' }}>
-            <button className="button" onClick={fetchResults}>
-              Refresh Status
-            </button>
-          </div>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+          <p>Your financial analysis is being processed. This may take a few minutes.</p>
+        </div>
+
+        <div style={{ marginTop: '20px', fontSize: '14px', color: '#6c757d' }}>
+          <p>🔄 Auto-refreshing every 2 seconds...</p>
+          <p>Last update: {lastUpdateTime.toLocaleTimeString()}</p>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   if (loading) {
     return renderSpinner();
