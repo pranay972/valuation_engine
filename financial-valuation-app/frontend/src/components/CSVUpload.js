@@ -1,12 +1,17 @@
-import React, { useCallback } from 'react';
+import { Download, Upload } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, Download } from 'lucide-react';
 
 export function CSVUpload({ onDataLoaded }) {
+  const [loading, setLoading] = useState(false);
+
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
+    setLoading(true);
+
     const formData = new FormData();
     formData.append('file', file);
+
     fetch('/api/csv/upload', {
       method: 'POST',
       body: formData
@@ -16,13 +21,20 @@ export function CSVUpload({ onDataLoaded }) {
         if (data.success) {
           onDataLoaded(data.data);
         }
+      })
+      .catch(error => {
+        console.error('Error uploading CSV:', error);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, [onDataLoaded]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'text/csv': ['.csv'] },
-    multiple: false
+    multiple: false,
+    disabled: loading
   });
 
   const downloadSample = () => {
@@ -35,6 +47,7 @@ export function CSVUpload({ onDataLoaded }) {
         <button
           onClick={downloadSample}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          disabled={loading}
         >
           <Download size={16} />
           Download Sample CSV
@@ -42,15 +55,32 @@ export function CSVUpload({ onDataLoaded }) {
       </div>
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-        }`}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input {...getInputProps()} />
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-        <p className="mt-2 text-sm text-gray-600">
-          {isDragActive ? 'Drop the CSV file here' : 'Drag & drop a CSV file, or click to select'}
-        </p>
+        {loading ? (
+          <>
+            <div className="spinner mx-auto h-12 w-12 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="mt-2 text-sm text-gray-600">Processing CSV file...</p>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .animate-spin {
+                animation: spin 1s linear infinite;
+              }
+            `}</style>
+          </>
+        ) : (
+          <>
+            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+            <p className="mt-2 text-sm text-gray-600">
+              {isDragActive ? 'Drop the CSV file here' : 'Drag & drop a CSV file, or click to select'}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

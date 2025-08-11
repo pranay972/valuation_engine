@@ -207,12 +207,12 @@
   "monte_carlo_simulation": {
     "runs": 1000,
     "wacc_method": {
-      "mean_ev": 2300.3,
-      "median_ev": 2247.3,
-      "std_dev": 521.6,
+      "mean_ev": 2303.4,
+      "median_ev": 2221.9,
+      "std_dev": 537.8,
       "confidence_interval_95": [
-        1494.3,
-        3536.1
+        1477.3,
+        3477.3
       ]
     },
     "parameter_distributions": {

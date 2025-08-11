@@ -40,6 +40,10 @@ class ValuationParameters:
     weighted_average_cost_of_capital: float = 0.0  # WACC (decimal)
     corporate_tax_rate: float = 0.0  # Corporate tax rate (decimal)
     use_mid_year_convention: bool = False  # Mid-year discounting convention
+    use_input_wacc: bool = True  # Use input WACC directly (True) or calculate WACC (False)
+    
+    # Valuation Configuration
+    use_debt_schedule: bool = False  # Use detailed debt schedule (True) or simple net debt (False)
     
     # Capital Structure and Share Information
     shares_outstanding: float = 1.0  # Number of shares outstanding

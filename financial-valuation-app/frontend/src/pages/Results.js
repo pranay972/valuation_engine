@@ -1,7 +1,7 @@
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
+import { analysisAPI, resultsAPI } from '../services/api';
 
 function Results() {
   const { analysisId } = useParams();
@@ -12,6 +12,7 @@ function Results() {
   const [selectedAnalysisTypes, setSelectedAnalysisTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [analysisStatus, setAnalysisStatus] = useState({});
 
   useEffect(() => {
     fetchResults();
@@ -24,8 +25,8 @@ function Results() {
       setSelectedAnalysisIds(analysisIds);
 
       // Fetch analysis types to get names
-      const typesResponse = await axios.get('/api/analysis/types');
-      const allTypes = typesResponse.data;
+      const typesResponse = await analysisAPI.getAnalysisTypes();
+      const allTypes = typesResponse.data.data;
 
       // Get selected analysis types from localStorage
       const storedSelectedTypes = localStorage.getItem('selectedAnalysisTypes');
@@ -40,10 +41,28 @@ function Results() {
         }
       }
 
+      // Check status for each analysis
+      const statusPromises = analysisIds.map(async (id) => {
+        try {
+          const response = await resultsAPI.getStatus(id);
+          return { id, status: response.data.data };
+        } catch (err) {
+          console.error(`Error fetching status for ${id}:`, err);
+          return { id, status: null };
+        }
+      });
+
+      const statuses = await Promise.all(statusPromises);
+      const statusMap = {};
+      statuses.forEach(({ id, status }) => {
+        if (status) statusMap[id] = status;
+      });
+      setAnalysisStatus(statusMap);
+
       // Fetch results for each analysis
       const resultsPromises = analysisIds.map(async (id) => {
         try {
-          const response = await axios.get(`/api/results/${id}/results`);
+          const response = await resultsAPI.getResults(id);
           return response.data;
         } catch (err) {
           console.error(`Error fetching results for ${id}:`, err);
@@ -63,7 +82,12 @@ function Results() {
       console.log('Selected Analysis IDs:', selectedAnalysisIds);
       console.log('Selected Analysis Types:', selectedTypes);
       console.log('All Results:', validResults);
+      console.log('Analysis Statuses:', statusMap);
       console.log('First Result Structure:', validResults[0] ? Object.keys(validResults[0]) : 'No results');
+      if (validResults[0] && validResults[0].data && validResults[0].data.results) {
+        console.log('Results Data Keys:', Object.keys(validResults[0].data.results));
+        console.log('Results Data Structure:', validResults[0].data.results);
+      }
     } catch (err) {
       setError('Failed to load results');
       setLoading(false);
@@ -89,15 +113,36 @@ function Results() {
   };
 
   const wasAnalysisSelected = (analysisTypeId) => {
+    // First check if it was explicitly selected from localStorage
     const isSelected = selectedAnalysisTypes.includes(analysisTypeId);
+
+    // If no explicit selection, check if we have results for this analysis type
+    if (!isSelected && allResults.length > 0) {
+      const result = allResults[0];
+      if (result.data && result.data.results && result.data.results.results_data) {
+        const resultsData = result.data.results.results_data;
+        // Check if this analysis type has results
+        if (resultsData[analysisTypeId]) {
+          return true;
+        }
+      }
+    }
+
     console.log(`Checking if ${analysisTypeId} was selected:`, isSelected, 'Selected Types:', selectedAnalysisTypes);
     return isSelected;
   };
 
   const renderDCFResults = (results) => {
-    if (!results.dcf_valuation) return null;
+    console.log('renderDCFResults called with:', results);
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    console.log('Extracted resultsData:', resultsData);
+    if (!resultsData || !resultsData.dcf_wacc) {
+      console.log('No DCF results data found');
+      return null;
+    }
 
-    const dcf = results.dcf_valuation;
+    const dcf = resultsData.dcf_wacc;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -166,9 +211,11 @@ function Results() {
   };
 
   const renderAPVResults = (results) => {
-    if (!results.apv_valuation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.apv) return null;
 
-    const apv = results.apv_valuation;
+    const apv = resultsData.apv;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #28a745', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -215,9 +262,11 @@ function Results() {
   };
 
   const renderComparableResults = (results) => {
-    if (!results.comparable_valuation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.multiples) return null;
 
-    const comp = results.comparable_valuation;
+    const comp = resultsData.multiples;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #ffc107', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -264,7 +313,9 @@ function Results() {
   };
 
   const renderScenarioResults = (results) => {
-    if (!results.scenarios) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.scenario) return null;
 
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
@@ -273,7 +324,7 @@ function Results() {
         </h2>
 
         <div className="grid">
-          {Object.entries(results.scenarios).map(([scenario, data]) => (
+          {Object.entries(resultsData.scenario).map(([scenario, data]) => (
             <div key={scenario} className="card">
               <h3 style={{ textTransform: 'capitalize' }}>{scenario.replace('_', ' ')}</h3>
               <p><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
@@ -297,9 +348,11 @@ function Results() {
   };
 
   const renderSensitivityResults = (results) => {
-    if (!results.sensitivity_analysis) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.sensitivity) return null;
 
-    const sens = results.sensitivity_analysis;
+    const sens = resultsData.sensitivity;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #fd7e14' }}>
         <h2 style={{ borderBottom: '2px solid #fd7e14', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -338,9 +391,11 @@ function Results() {
   };
 
   const renderMonteCarloResults = (results) => {
-    if (!results.monte_carlo_simulation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.monte_carlo) return null;
 
-    const mc = results.monte_carlo_simulation;
+    const mc = resultsData.monte_carlo;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -386,14 +441,69 @@ function Results() {
     );
   };
 
-  if (loading) {
+  const renderSpinner = () => (
+    <div className="container">
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div className="spinner" style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #3498db',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 20px'
+        }}></div>
+        <h2>Processing Analysis...</h2>
+        <p>Your financial valuation is being calculated. This may take a few moments.</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+
+  const renderProcessingStatus = () => {
+    const processingAnalyses = Object.values(analysisStatus).filter(status =>
+      status.status === 'processing' || status.status === 'pending'
+    );
+
+    if (processingAnalyses.length === 0) return null;
+
     return (
       <div className="container">
-        <div className="card">
-          <h2>Loading results...</h2>
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div className="spinner" style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <h2>Analysis in Progress</h2>
+          <p>Your financial valuation is still being processed. Please wait while we complete the calculations.</p>
+          <div style={{ marginTop: '20px' }}>
+            <button className="button" onClick={fetchResults}>
+              Refresh Status
+            </button>
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </div>
     );
+  };
+
+  if (loading) {
+    return renderSpinner();
   }
 
   if (error) {
@@ -409,11 +519,29 @@ function Results() {
     );
   }
 
+  // Check if any analysis is still processing
+  const hasProcessingAnalyses = Object.values(analysisStatus).some(status =>
+    status.status === 'processing' || status.status === 'pending'
+  );
+
+  if (hasProcessingAnalyses) {
+    return renderProcessingStatus();
+  }
+
   if (!allResults || allResults.length === 0) {
     return (
       <div className="container">
-        <div className="card">
-          <h2>No results found</h2>
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>No Results Available</h2>
+          <p>It looks like the analysis hasn't completed yet or there was an issue processing your inputs.</p>
+          <div style={{ marginTop: '20px' }}>
+            <button className="button" onClick={fetchResults}>
+              Check Again
+            </button>
+            <button className="button" onClick={() => navigate('/')} style={{ marginLeft: '10px' }}>
+              Start New Analysis
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -426,6 +554,9 @@ function Results() {
       {/* Show only the analysis types that were selected by the user */}
       {allResults.length > 0 && (
         <div>
+          {console.log('Rendering results section with allResults:', allResults)}
+          {console.log('Checking wasAnalysisSelected for dcf_wacc:', wasAnalysisSelected('dcf_wacc'))}
+
           {/* DCF Results - only if selected */}
           {wasAnalysisSelected('dcf_wacc') && renderDCFResults(allResults[0])}
 

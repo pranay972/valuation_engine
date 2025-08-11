@@ -11,6 +11,35 @@ services:
       - ./backend:/app
     environment:
       - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: financial_valuation_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Celery Worker
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: financial_valuation_celery
+    command: celery -A app.services.celery_service.celery worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - backend
+      - redis
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
 
   # React Frontend
   frontend:
@@ -26,4 +55,7 @@ services:
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://backend:5000/api 
+      - REACT_APP_API_URL=http://localhost:8001/api
+
+volumes:
+  redis_data: 

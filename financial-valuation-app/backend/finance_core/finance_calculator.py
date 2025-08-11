@@ -35,15 +35,15 @@ import numpy as np
 # Suppress all warnings for silent operation
 warnings.filterwarnings('ignore')
 
-from .params import ValuationParameters
-from .drivers import project_ebit_series, project_free_cash_flow
-from .wacc import calculate_weighted_average_cost_of_capital, calculate_unlevered_cost_of_equity
-from .dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
-from .multiples import run_multiples_analysis
-from .scenario import run_scenarios
-from .monte_carlo import run_monte_carlo
-from .sensitivity import run_sensitivity_analysis
-from .error_messages import create_error, validate_required_field, validate_non_negative, validate_list_consistency, FinanceCoreError
+from finance_core.params import ValuationParameters
+from finance_core.drivers import project_ebit_series, project_free_cash_flow
+from finance_core.wacc import calculate_weighted_average_cost_of_capital, calculate_unlevered_cost_of_equity
+from finance_core.dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
+from finance_core.multiples import run_multiples_analysis
+from finance_core.scenario import run_scenarios
+from finance_core.monte_carlo import run_monte_carlo
+from finance_core.sensitivity import run_sensitivity_analysis
+from finance_core.error_messages import create_error, validate_required_field, validate_non_negative, validate_list_consistency, FinanceCoreError
 
 @dataclass
 class FinancialInputs:
@@ -130,6 +130,9 @@ class FinancialInputs:
     
     # Monte Carlo specifications (optional with defaults)
     monte_carlo_specs: Optional[Dict[str, Dict[str, Any]]] = None
+    
+    # Valuation configuration (optional with defaults)
+    use_input_wacc: bool = True  # Use input WACC directly (True) or calculate WACC (False)
 
 class CleanModularFinanceCalculator:
     """
@@ -945,7 +948,8 @@ def create_financial_inputs_from_json(data: Dict[str, Any]) -> FinancialInputs:
         comparable_multiples=data.get("comparable_multiples"),
         scenarios=data.get("scenarios"),
         sensitivity_analysis=data.get("sensitivity_analysis"),
-        monte_carlo_specs=data.get("monte_carlo_specs")
+        monte_carlo_specs=data.get("monte_carlo_specs"),
+        use_input_wacc=financial_data.get("use_input_wacc", True) # Add use_input_wacc
     )
 
 def main():
