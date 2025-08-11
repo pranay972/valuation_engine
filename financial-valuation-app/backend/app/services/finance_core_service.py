@@ -299,14 +299,17 @@ class FinanceCoreService:
             elif analysis_type == 'multiples':
                 results = self.calculator.analyze_comparable_multiples(fi)
                 logger.info("Multiples analysis completed successfully")
+                
+                # The multiples analysis already returns the proper summary values
+                # Just extract them directly from the results
                 return {
                     'success': True,
                     'results': {
                         'comparable_multiples': results
                     },
-                    'enterprise_value': results.get('mean_enterprise_value'),
-                    'equity_value': results.get('mean_equity_value'),
-                    'price_per_share': results.get('mean_price_per_share')
+                    'enterprise_value': results.get('enterprise_value'),
+                    'equity_value': results.get('equity_value'),
+                    'price_per_share': results.get('price_per_share')
                 }
             
             elif analysis_type == 'scenario':

@@ -478,11 +478,26 @@ class FinancialValuationEngine:
                     "peer_count": row['Peer Count']
                 }
             
+            # Calculate summary values for frontend display
+            enterprise_value = summary.get("mean_ev", 0.0)
+            
+            # For multiples analysis, equity value is typically enterprise value minus net debt
+            # Since we don't have detailed debt info, we'll use a simplified approach
+            equity_value = enterprise_value  # Assume minimal debt for relative valuation
+            
+            # Calculate price per share
+            price_per_share = None
+            if inputs.share_count > 0:
+                price_per_share = equity_value / inputs.share_count
+            
             return {
                 "ev_multiples": summary,
                 "base_metrics_used": base_metrics,
                 "implied_evs_by_multiple": implied_evs_by_multiple,
-                "calculation_method": "Comparable Multiples"
+                "calculation_method": "Comparable Multiples",
+                "enterprise_value": enterprise_value,
+                "equity_value": equity_value,
+                "price_per_share": price_per_share
             }
         except Exception as e:
             # Convert any exception to standardized error format

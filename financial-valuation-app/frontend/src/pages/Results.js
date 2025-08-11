@@ -288,14 +288,36 @@ function Results() {
   const renderComparableResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.multiples) return null;
+    if (!resultsData || !resultsData.comparable_multiples) return null;
 
-    const comp = resultsData.multiples;
+    const comp = resultsData.comparable_multiples;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #ffc107', paddingBottom: '10px', marginBottom: '20px' }}>
           📈 Comparable Multiples
         </h2>
+
+        {/* Summary Values */}
+        <div className="grid" style={{ marginBottom: '30px' }}>
+          <div className="card">
+            <h3>Enterprise Value</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
+              {formatCurrency(results?.data?.results?.enterprise_value)}
+            </p>
+          </div>
+          <div className="card">
+            <h3>Equity Value</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+              {formatCurrency(results?.data?.results?.equity_value)}
+            </p>
+          </div>
+          <div className="card">
+            <h3>Price Per Share</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
+              ${results?.data?.results?.price_per_share?.toFixed(2) || 'N/A'}
+            </p>
+          </div>
+        </div>
 
         <div className="grid">
           <div className="card">
