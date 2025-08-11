@@ -151,14 +151,14 @@ function InputForm() {
           share_count: parseFloat(formData.share_count),
           cost_of_debt: parseFloat(formData.cost_of_debt),
           cash_balance: parseFloat(formData.cash_balance),
-          cost_of_capital: {
-            risk_free_rate: parseFloat(formData.risk_free_rate),
-            market_risk_premium: parseFloat(formData.market_risk_premium),
-            levered_beta: parseFloat(formData.levered_beta),
-            unlevered_beta: parseFloat(formData.unlevered_beta),
-            target_debt_to_value_ratio: parseFloat(formData.target_debt_to_value_ratio),
-            unlevered_cost_of_equity: parseFloat(formData.unlevered_cost_of_equity)
-          },
+          // APV-specific fields (required for APV analysis)
+          unlevered_cost_of_equity: parseFloat(formData.unlevered_cost_of_equity),
+          // Additional cost of capital fields
+          risk_free_rate: parseFloat(formData.risk_free_rate),
+          market_risk_premium: parseFloat(formData.market_risk_premium),
+          levered_beta: parseFloat(formData.levered_beta),
+          unlevered_beta: parseFloat(formData.unlevered_beta),
+          target_debt_to_value_ratio: parseFloat(formData.target_debt_to_value_ratio),
           debt_schedule: formData.debt_schedule
         },
         comparable_multiples: {

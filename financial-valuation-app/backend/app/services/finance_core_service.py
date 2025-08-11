@@ -114,7 +114,11 @@ class FinanceCoreService:
                 cost_of_debt=required_fields['cost_of_debt']
             )
             
-            # Add optional fields
+            # Add APV-specific fields
+            if 'unlevered_cost_of_equity' in financial_inputs:
+                fi.unlevered_cost_of_equity = financial_inputs['unlevered_cost_of_equity']
+            
+            # Add other optional fields
             optional_fields = [
                 'cash_balance', 'amortization', 'other_non_cash', 
                 'other_working_capital', 'comparable_multiples', 
