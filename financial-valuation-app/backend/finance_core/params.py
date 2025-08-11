@@ -28,9 +28,6 @@ class ValuationParameters:
     
     # Working Capital and Cash Flow Components
     net_working_capital_changes: List[float] = field(default_factory=list)  # Annual NWC changes (USD)
-    amortization_expense: List[float] = field(default_factory=list)  # Annual amortization (USD)
-    other_non_cash_items: List[float] = field(default_factory=list)  # Other non-cash adjustments
-    other_working_capital_items: List[float] = field(default_factory=list)  # Other WC adjustments
     
     # Direct Cash Flow Override
     free_cash_flow_series: List[float] = field(default_factory=list)  # Direct FCF projections
@@ -40,10 +37,6 @@ class ValuationParameters:
     weighted_average_cost_of_capital: float = 0.0  # WACC (decimal)
     corporate_tax_rate: float = 0.0  # Corporate tax rate (decimal)
     use_mid_year_convention: bool = False  # Mid-year discounting convention
-    use_input_wacc: bool = True  # Use input WACC directly (True) or calculate WACC (False)
-    
-    # Valuation Configuration
-    use_debt_schedule: bool = False  # Use detailed debt schedule (True) or simple net debt (False)
     
     # Capital Structure and Share Information
     shares_outstanding: float = 1.0  # Number of shares outstanding
@@ -60,6 +53,10 @@ class ValuationParameters:
     levered_beta: float = 1.0  # Levered equity beta
     unlevered_beta: float = 1.0  # Unlevered beta
     target_debt_to_value_ratio: float = 0.3  # Target debt-to-value ratio (decimal)
+    
+    # Valuation Configuration
+    use_input_wacc: bool = True  # Use input WACC directly (True) or calculate WACC (False)
+    use_debt_schedule: bool = False  # Use detailed debt schedule (True) or simple net debt (False)
     
     # Monte Carlo Simulation Specifications
     monte_carlo_variable_specs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -133,10 +130,7 @@ class ValuationParameters:
             ("revenue_projections", self.revenue_projections),
             ("capital_expenditure", self.capital_expenditure),
             ("depreciation_expense", self.depreciation_expense),
-            ("net_working_capital_changes", self.net_working_capital_changes),
-            ("amortization_expense", self.amortization_expense),
-            ("other_non_cash_items", self.other_non_cash_items),
-            ("other_working_capital_items", self.other_working_capital_items)
+            ("net_working_capital_changes", self.net_working_capital_changes)
         ]
         
         # Filter out empty lists

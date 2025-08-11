@@ -1,29 +1,4 @@
-"""
-Clean Modular Finance Calculator
-
-A professional-grade financial valuation calculator that implements industry-standard
-methodologies for corporate valuation. This system provides comprehensive financial
-analysis capabilities with clean, modular architecture.
-
-Key Features:
-- DCF (WACC): Standard discounted cash flow using weighted average cost of capital
-- APV: Adjusted Present Value method separating unlevered value from financing effects
-- Comparable Multiples: Relative valuation using peer company ratios
-- Scenario Analysis: Multiple scenarios with different parameter combinations
-- Sensitivity Analysis: Parameter impact analysis on key valuation drivers
-- Monte Carlo Simulation: Risk analysis with probability distributions
-
-Professional Standards:
-- WACC circular dependency resolution using target capital structure
-- Hamada equation implementation for unlevered/levered beta calculations
-- Comprehensive FCF calculation with all cash flow components
-- Net debt calculation for accurate valuation
-- Terminal value validation with professional checks
-- APV tax shield discounting at unlevered cost of equity
-
-Author: Finance Core Team
-Version: 1.0.0
-"""
+"""Professional-grade financial valuation calculator with industry-standard methodologies."""
 
 import warnings
 import json
@@ -35,57 +10,19 @@ import numpy as np
 # Suppress all warnings for silent operation
 warnings.filterwarnings('ignore')
 
-from finance_core.params import ValuationParameters
-from finance_core.drivers import project_ebit_series, project_free_cash_flow
-from finance_core.wacc import calculate_weighted_average_cost_of_capital, calculate_unlevered_cost_of_equity
-from finance_core.dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
-from finance_core.multiples import run_multiples_analysis
-from finance_core.scenario import run_scenarios
-from finance_core.monte_carlo import run_monte_carlo
-from finance_core.sensitivity import run_sensitivity_analysis
-from finance_core.error_messages import create_error, validate_required_field, validate_non_negative, validate_list_consistency, FinanceCoreError
+from .params import ValuationParameters
+from .drivers import project_ebit_series, project_free_cash_flow
+from .wacc import calculate_weighted_average_cost_of_capital, calculate_unlevered_cost_of_equity
+from .dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
+from .multiples import analyze_comparable_multiples
+from .scenario import perform_scenario_analysis
+from .monte_carlo import simulate_monte_carlo
+from .sensitivity import perform_sensitivity_analysis
+from .error_messages import create_error, validate_required_field, validate_non_negative, validate_list_consistency, FinanceCoreError
 
 @dataclass
 class FinancialInputs:
-    """
-    Comprehensive input data structure for financial valuation calculations.
-    
-    This dataclass encapsulates all required and optional inputs for professional
-    financial valuation analysis. It provides a clean interface for passing
-    financial data to the valuation calculator while maintaining type safety
-    and validation capabilities.
-    
-    Required Fields:
-        revenue: Annual revenue projections for each forecast year (USD millions)
-        ebit_margin: EBIT margin as decimal (e.g., 0.18 for 18%)
-        capex: Annual capital expenditure for each forecast year (USD millions)
-        depreciation: Annual depreciation expense for each forecast year (USD millions)
-        nwc_changes: Annual net working capital changes for each forecast year (USD millions)
-        tax_rate: Corporate tax rate as decimal (e.g., 0.25 for 25%)
-        terminal_growth: Terminal growth rate as decimal (e.g., 0.025 for 2.5%)
-        wacc: Weighted average cost of capital as decimal (e.g., 0.095 for 9.5%)
-        share_count: Number of shares outstanding (millions)
-        cost_of_debt: Pre-tax cost of debt as decimal (e.g., 0.065 for 6.5%)
-    
-    Optional Fields:
-        amortization: Annual amortization expense (defaults to empty list)
-        other_non_cash: Other non-cash adjustments (defaults to empty list)
-        other_working_capital: Other working capital adjustments (defaults to empty list)
-        debt_schedule: Annual debt levels by year index (defaults to empty dict)
-        cash_balance: Cash and cash equivalents (defaults to 0.0)
-        unlevered_cost_of_equity: Unlevered cost of equity (defaults to 0.0)
-        cost_of_equity: Levered cost of equity (defaults to 0.0)
-        risk_free_rate: Risk-free rate (defaults to 0.03)
-        market_risk_premium: Market risk premium (defaults to 0.06)
-        levered_beta: Levered equity beta (defaults to 1.0)
-        unlevered_beta: Unlevered beta (defaults to 1.0)
-        target_debt_ratio: Target debt-to-value ratio (defaults to 0.3)
-        equity_value: Current market equity value (defaults to None)
-        comparable_multiples: Comparable company multiples data (defaults to None)
-        scenarios: Scenario analysis definitions (defaults to None)
-        sensitivity_analysis: Sensitivity analysis parameter ranges (defaults to None)
-        monte_carlo_specs: Monte Carlo simulation specifications (defaults to None)
-    """
+    """Comprehensive input data structure for financial valuation calculations."""
     # Basic financial data (required)
     revenue: List[float]
     ebit_margin: float
@@ -98,16 +35,8 @@ class FinancialInputs:
     share_count: float
     cost_of_debt: float
     
-    # Additional FCF components (optional with defaults)
-    amortization: List[float] = field(default_factory=list)
-    other_non_cash: List[float] = field(default_factory=list)
-    other_working_capital: List[float] = field(default_factory=list)
-    
-    # Capital structure (optional with defaults)
-    debt_schedule: Dict[int, float] = field(default_factory=dict)
+    # Capital structure (optional with sensible defaults)
     cash_balance: float = 0.0
-    
-    # Cost of capital inputs for professional calculations (optional with defaults)
     unlevered_cost_of_equity: float = 0.0
     cost_of_equity: float = 0.0
     risk_free_rate: float = 0.03
@@ -116,33 +45,37 @@ class FinancialInputs:
     unlevered_beta: float = 1.0
     target_debt_ratio: float = 0.3
     
-    # Additional inputs for APV (optional with defaults)
+    # Optional fields with defaults
+    debt_schedule: Dict[int, float] = field(default_factory=dict)
+    
+    # Additional inputs for APV (optional)
     equity_value: Optional[float] = None
     
-    # Comparable multiples data (optional with defaults)
+    # Comparable multiples data (optional)
     comparable_multiples: Optional[Dict[str, List[float]]] = None
     
-    # Scenario analysis (optional with defaults)
+    # Scenario analysis (optional)
     scenarios: Optional[Dict[str, Dict[str, Any]]] = None
     
-    # Sensitivity analysis (optional with defaults)
+    # Sensitivity analysis (optional)
     sensitivity_analysis: Optional[Dict[str, List[float]]] = None
     
-    # Monte Carlo specifications (optional with defaults)
+    # Monte Carlo specifications (optional)
     monte_carlo_specs: Optional[Dict[str, Dict[str, Any]]] = None
     
-    # Valuation configuration (optional with defaults)
-    use_input_wacc: bool = True  # Use input WACC directly (True) or calculate WACC (False)
+    # Configuration toggles (optional)
+    use_input_wacc: bool = True
+    use_debt_schedule: bool = False
 
-class CleanModularFinanceCalculator:
+class FinancialValuationEngine:
     """
-    Professional-grade financial valuation calculator with comprehensive analysis capabilities.
+    Professional-grade financial valuation engine with comprehensive analysis capabilities.
     
-    This calculator implements industry-standard financial valuation methodologies
+    This engine implements industry-standard financial valuation methodologies
     including DCF (WACC), APV, comparable multiples, scenario analysis, sensitivity
-    analysis, and Monte Carlo simulation. It provides a clean, modular interface
-    for performing professional financial analysis with robust error handling and
-    comprehensive validation.
+    analysis, and Monte Carlo simulation. It provides a professional interface
+    for performing comprehensive financial analysis with robust error handling and
+    validation.
     
     Key Features:
         - DCF Valuation: Standard discounted cash flow using WACC methodology
@@ -155,8 +88,8 @@ class CleanModularFinanceCalculator:
         - Professional Standards: Industry-standard methodologies and best practices
     
     Usage:
-        calculator = CleanModularFinanceCalculator()
-        results = calculator.run_comprehensive_valuation(inputs, "Company Name")
+        engine = FinancialValuationEngine()
+        results = engine.run_comprehensive_valuation(inputs, "Company Name")
     """
     
     def __init__(self):
@@ -208,9 +141,6 @@ class CleanModularFinanceCalculator:
                 capital_expenditure=inputs.capex,
                 depreciation_expense=inputs.depreciation,
                 net_working_capital_changes=inputs.nwc_changes,
-                amortization_expense=inputs.amortization,
-                other_non_cash_items=inputs.other_non_cash,
-                other_working_capital_items=inputs.other_working_capital,
                 corporate_tax_rate=inputs.tax_rate,
                 terminal_growth_rate=inputs.terminal_growth,
                 weighted_average_cost_of_capital=inputs.wacc,
@@ -225,7 +155,9 @@ class CleanModularFinanceCalculator:
                 levered_beta=inputs.levered_beta,
                 unlevered_beta=inputs.unlevered_beta,
                 target_debt_to_value_ratio=inputs.target_debt_ratio,
-                current_equity_value=inputs.equity_value
+                current_equity_value=inputs.equity_value,
+                use_input_wacc=inputs.use_input_wacc,
+                use_debt_schedule=inputs.use_debt_schedule
             )
             
             # Add optional analysis data
@@ -276,7 +208,15 @@ class CleanModularFinanceCalculator:
             'terminal_growth': inputs.terminal_growth,
             'wacc': inputs.wacc,
             'share_count': inputs.share_count,
-            'cost_of_debt': inputs.cost_of_debt
+            'cost_of_debt': inputs.cost_of_debt,
+            'cash_balance': inputs.cash_balance,
+            'unlevered_cost_of_equity': inputs.unlevered_cost_of_equity,
+            'cost_of_equity': inputs.cost_of_equity,
+            'risk_free_rate': inputs.risk_free_rate,
+            'market_risk_premium': inputs.market_risk_premium,
+            'levered_beta': inputs.levered_beta,
+            'unlevered_beta': inputs.unlevered_beta,
+            'target_debt_ratio': inputs.target_debt_ratio
         }
         
         for field_name, field_value in numeric_fields.items():
@@ -290,17 +230,9 @@ class CleanModularFinanceCalculator:
             'nwc_changes': inputs.nwc_changes
         }
         
-        # Add optional lists if they exist
-        if inputs.amortization:
-            list_fields['amortization'] = inputs.amortization
-        if inputs.other_non_cash:
-            list_fields['other_non_cash'] = inputs.other_non_cash
-        if inputs.other_working_capital:
-            list_fields['other_working_capital'] = inputs.other_working_capital
-        
         validate_list_consistency(list_fields)
     
-    def run_dcf_valuation(self, inputs: FinancialInputs) -> Dict[str, Any]:
+    def calculate_dcf_valuation(self, inputs: FinancialInputs) -> Dict[str, Any]:
         """
         Perform DCF (Discounted Cash Flow) valuation using WACC methodology.
         
@@ -387,7 +319,7 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=str(e))
     
-    def run_apv_valuation(self, inputs: FinancialInputs) -> Dict[str, Any]:
+    def calculate_apv_valuation(self, inputs: FinancialInputs) -> Dict[str, Any]:
         """
         Perform APV (Adjusted Present Value) valuation analysis.
         
@@ -458,7 +390,7 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=f"APV calculation failed: {str(e)}")
     
-    def run_comparable_multiples(self, inputs: FinancialInputs) -> Dict[str, Any]:
+    def analyze_comparable_multiples(self, inputs: FinancialInputs) -> Dict[str, Any]:
         """
         Perform comparable multiples analysis for relative valuation.
         
@@ -503,7 +435,7 @@ class CleanModularFinanceCalculator:
             comps_df = pd.DataFrame(comps_data)
             
             # Run multiples analysis
-            results_df = run_multiples_analysis(params, comps_df)
+            results_df = analyze_comparable_multiples(params, comps_df)
             
             # Calculate summary statistics
             ev_values = []
@@ -559,7 +491,7 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=f"Comparable multiples analysis failed: {str(e)}")
     
-    def run_scenario_analysis(self, inputs: FinancialInputs) -> Dict[str, Any]:
+    def perform_scenario_analysis(self, inputs: FinancialInputs) -> Dict[str, Any]:
         """
         Perform scenario analysis to evaluate valuation under different assumptions.
         
@@ -593,7 +525,7 @@ class CleanModularFinanceCalculator:
                 raise create_error("INVALID_SCENARIO_DEFINITION", reason="No scenario definitions provided")
             
             params = self._convert_to_valuation_params(inputs)
-            scenarios_df = run_scenarios(params)
+            scenarios_df = perform_scenario_analysis(params)
             
             scenarios = {}
             for scenario_name, row in scenarios_df.iterrows():
@@ -624,7 +556,7 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=f"Scenario analysis failed: {str(e)}")
     
-    def run_sensitivity_analysis(self, inputs: FinancialInputs) -> Dict[str, Any]:
+    def perform_sensitivity_analysis(self, inputs: FinancialInputs) -> Dict[str, Any]:
         """
         Perform sensitivity analysis to understand parameter impact on valuation.
         
@@ -658,35 +590,33 @@ class CleanModularFinanceCalculator:
                 raise create_error("INVALID_MONTE_CARLO_SPECS", reason="No sensitivity analysis ranges provided")
             
             params = self._convert_to_valuation_params(inputs)
-            sensitivity_df = run_sensitivity_analysis(params)
+            sensitivity_df = perform_sensitivity_analysis(params)
             
             sensitivity = {}
             for col in sensitivity_df.columns:
                 if col.endswith("_ev"):
-                    param_name = col.replace("_ev", "").replace("_range", "")
+                    param_name = col.replace("_ev", "")
                     if param_name not in sensitivity:
                         sensitivity[param_name] = {"ev": {}, "price_per_share": {}}
                     
                     for i, value in enumerate(sensitivity_df[col]):
                         if not pd.isna(value):
                             # Get the corresponding range value
-                            range_key = f"{param_name}_range"
-                            if range_key in inputs.sensitivity_analysis:
-                                range_values = inputs.sensitivity_analysis[range_key]
+                            if param_name in inputs.sensitivity_analysis:
+                                range_values = inputs.sensitivity_analysis[param_name]
                                 if i < len(range_values):
                                     sensitivity[param_name]["ev"][str(range_values[i])] = round(value, 1)
                 
                 elif col.endswith("_price_per_share"):
-                    param_name = col.replace("_price_per_share", "").replace("_range", "")
+                    param_name = col.replace("_price_per_share", "")
                     if param_name not in sensitivity:
                         sensitivity[param_name] = {"ev": {}, "price_per_share": {}}
                     
                     for i, value in enumerate(sensitivity_df[col]):
                         if not pd.isna(value):
                             # Get the corresponding range value
-                            range_key = f"{param_name}_range"
-                            if range_key in inputs.sensitivity_analysis:
-                                range_values = inputs.sensitivity_analysis[range_key]
+                            if param_name in inputs.sensitivity_analysis:
+                                range_values = inputs.sensitivity_analysis[param_name]
                                 if i < len(range_values):
                                     sensitivity[param_name]["price_per_share"][str(range_values[i])] = round(value, 2)
             
@@ -702,7 +632,7 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=f"Sensitivity analysis failed: {str(e)}")
     
-    def run_monte_carlo_simulation(self, inputs: FinancialInputs, runs: int = 1000) -> Dict[str, Any]:
+    def simulate_monte_carlo(self, inputs: FinancialInputs, runs: int = 1000) -> Dict[str, Any]:
         """
         Perform Monte Carlo simulation for risk analysis and uncertainty quantification.
         
@@ -739,7 +669,7 @@ class CleanModularFinanceCalculator:
                 raise create_error("INVALID_MONTE_CARLO_SPECS", reason="No Monte Carlo specifications provided")
             
             params = self._convert_to_valuation_params(inputs)
-            results = run_monte_carlo(params, runs=runs)
+            results = simulate_monte_carlo(params, runs=runs)
             
             # Process WACC method results
             wacc_stats = {}
@@ -769,9 +699,9 @@ class CleanModularFinanceCalculator:
             else:
                 raise create_error("DCF_CALCULATION_FAILED", reason=f"Monte Carlo simulation failed: {str(e)}")
     
-    def run_comprehensive_valuation(self, inputs: FinancialInputs, 
-                                  company_name: str = "Company",
-                                  valuation_date: str = "2024-01-01") -> Dict[str, Any]:
+    def perform_comprehensive_valuation(self, inputs: FinancialInputs, 
+                                      company_name: str = "Company",
+                                      valuation_date: str = "2024-01-01") -> Dict[str, Any]:
         """
         Perform comprehensive financial valuation using all available methods.
         
@@ -822,14 +752,14 @@ class CleanModularFinanceCalculator:
         }
         
         # Run DCF
-        dcf_result = self.run_dcf_valuation(inputs)
+        dcf_result = self.calculate_dcf_valuation(inputs)
         if "error" not in dcf_result:
             results["dcf_valuation"] = dcf_result
         else:
             results["dcf_valuation"] = {"error": dcf_result.get("error", "Unknown error")}
         
         # Run APV
-        apv_result = self.run_apv_valuation(inputs)
+        apv_result = self.calculate_apv_valuation(inputs)
         if "error" not in apv_result:
             results["apv_valuation"] = apv_result
         else:
@@ -837,7 +767,7 @@ class CleanModularFinanceCalculator:
         
         # Run Comparable Multiples
         if inputs.comparable_multiples:
-            multiples_result = self.run_comparable_multiples(inputs)
+            multiples_result = self.analyze_comparable_multiples(inputs)
             if "error" not in multiples_result:
                 results["comparable_valuation"] = multiples_result
             else:
@@ -845,7 +775,7 @@ class CleanModularFinanceCalculator:
         
         # Run Scenario Analysis
         if inputs.scenarios:
-            scenario_result = self.run_scenario_analysis(inputs)
+            scenario_result = self.perform_scenario_analysis(inputs)
             if not isinstance(scenario_result, dict) or "error" not in scenario_result:
                 results["scenarios"] = scenario_result
             else:
@@ -853,7 +783,7 @@ class CleanModularFinanceCalculator:
         
         # Run Sensitivity Analysis
         if inputs.sensitivity_analysis:
-            sensitivity_result = self.run_sensitivity_analysis(inputs)
+            sensitivity_result = self.perform_sensitivity_analysis(inputs)
             if not isinstance(sensitivity_result, dict) or "error" not in sensitivity_result:
                 results["sensitivity_analysis"] = sensitivity_result
             else:
@@ -861,7 +791,9 @@ class CleanModularFinanceCalculator:
         
         # Run Monte Carlo
         if inputs.monte_carlo_specs:
-            monte_carlo_result = self.run_monte_carlo_simulation(inputs)
+            # Get runs from monte_carlo_specs or use default
+            runs = inputs.monte_carlo_specs.get("runs", 1000)
+            monte_carlo_result = self.simulate_monte_carlo(inputs, runs=runs)
             if "error" not in monte_carlo_result:
                 results["monte_carlo_simulation"] = monte_carlo_result
             else:
@@ -869,7 +801,7 @@ class CleanModularFinanceCalculator:
         
         return results
 
-def create_financial_inputs_from_json(data: Dict[str, Any]) -> FinancialInputs:
+def parse_financial_inputs(data: Dict[str, Any]) -> FinancialInputs:
     """
     Create FinancialInputs object from JSON data with comprehensive validation.
     
@@ -923,56 +855,36 @@ def create_financial_inputs_from_json(data: Dict[str, Any]) -> FinancialInputs:
         capex=financial_data.get("capex", financial_data.get("capital_expenditure", [])),
         depreciation=financial_data.get("depreciation", financial_data.get("depreciation_expense", [])),
         nwc_changes=financial_data.get("nwc_changes", financial_data.get("net_working_capital_changes", [])),
-        tax_rate=financial_data.get("tax_rate", financial_data.get("corporate_tax_rate", 0.0)),
-        terminal_growth=financial_data.get("terminal_growth", financial_data.get("terminal_growth_rate", 0.0)),
-        wacc=financial_data.get("wacc", financial_data.get("weighted_average_cost_of_capital", 0.0)),
-        share_count=financial_data.get("share_count", financial_data.get("shares_outstanding", 1.0)),
+        tax_rate=financial_data.get("tax_rate", financial_data.get("corporate_tax_rate")),
+        terminal_growth=financial_data.get("terminal_growth", financial_data.get("terminal_growth_rate")),
+        wacc=financial_data.get("wacc", financial_data.get("weighted_average_cost_of_capital")),
+        share_count=financial_data.get("share_count", financial_data.get("shares_outstanding")),
         cost_of_debt=financial_data["cost_of_debt"],
-        amortization=financial_data.get("amortization", []),
-        other_non_cash=financial_data.get("other_non_cash", []),
-        other_working_capital=financial_data.get("other_working_capital", []),
+
         debt_schedule=debt_schedule,
-        cash_balance=financial_data.get("cash_balance", 0.0),
+        cash_balance=financial_data.get("cash_balance"),
         
         # Cost of capital parameters
         unlevered_cost_of_equity=financial_data.get("unlevered_cost_of_equity", 
-                                                   cost_of_capital.get("unlevered_cost_of_equity", 0.0)),
-        cost_of_equity=financial_data.get("cost_of_equity", 0.0),
-        risk_free_rate=cost_of_capital.get("risk_free_rate", 0.03),
-        market_risk_premium=cost_of_capital.get("market_risk_premium", 0.06),
-        levered_beta=cost_of_capital.get("levered_beta", 1.0),
-        unlevered_beta=cost_of_capital.get("unlevered_beta", 1.0),
-        target_debt_ratio=cost_of_capital.get("target_debt_ratio", cost_of_capital.get("target_debt_to_value_ratio", 0.3)),
+                                                   cost_of_capital.get("unlevered_cost_of_equity")),
+        cost_of_equity=financial_data.get("cost_of_equity", cost_of_capital.get("cost_of_equity")),
+        risk_free_rate=cost_of_capital.get("risk_free_rate"),
+        market_risk_premium=cost_of_capital.get("market_risk_premium"),
+        levered_beta=cost_of_capital.get("levered_beta"),
+        unlevered_beta=cost_of_capital.get("unlevered_beta"),
+        target_debt_ratio=cost_of_capital.get("target_debt_ratio", cost_of_capital.get("target_debt_to_value_ratio")),
         
         equity_value=financial_data.get("equity_value"),
         comparable_multiples=data.get("comparable_multiples"),
         scenarios=data.get("scenarios"),
         sensitivity_analysis=data.get("sensitivity_analysis"),
         monte_carlo_specs=data.get("monte_carlo_specs"),
-        use_input_wacc=financial_data.get("use_input_wacc", True) # Add use_input_wacc
+        use_input_wacc=financial_data.get("use_input_wacc", True),
+        use_debt_schedule=financial_data.get("use_debt_schedule", False)
     )
 
 def main():
-    """
-    Main function to run the finance calculator from command line.
-    
-    This function provides a command-line interface for the finance calculator,
-    allowing users to run comprehensive valuations by providing input JSON files
-    and optionally specifying output files for results.
-    
-    Usage:
-        python finance_calculator.py <input_file.json> [output_file.json]
-        
-    Args:
-        input_file.json: JSON file containing financial valuation inputs
-        output_file.json: Optional output file for results (default: prints to console)
-        
-    The input JSON file should follow the structure defined in the documentation
-    and include all required financial inputs for the desired analysis.
-    
-    Example:
-        python finance_calculator.py sample_input.json results.json
-    """
+    """Command-line interface for the finance calculator."""
     import sys
     import os
     
@@ -987,12 +899,12 @@ def main():
         with open(input_file, 'r') as f:
             input_data = json.load(f)
         
-        # Create calculator and inputs
-        calculator = CleanModularFinanceCalculator()
-        inputs = create_financial_inputs_from_json(input_data)
+        # Create engine and inputs
+        engine = FinancialValuationEngine()
+        inputs = parse_financial_inputs(input_data)
         
         # Run comprehensive valuation
-        results = calculator.run_comprehensive_valuation(
+        results = engine.perform_comprehensive_valuation(
             inputs=inputs,
             company_name=input_data.get("company_name", "Company"),
             valuation_date=input_data.get("valuation_date", "2024-01-01")

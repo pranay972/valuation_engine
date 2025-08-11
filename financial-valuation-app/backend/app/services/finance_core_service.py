@@ -16,25 +16,25 @@ def _import_finance_core():
     """Import finance core modules with proper path management and error handling"""
     try:
         # Try importing from the current finance_core directory first
-        from finance_core.finance_calculator import CleanModularFinanceCalculator, FinancialInputs
+        from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
         logger.info("Successfully imported finance_calculator from current finance_core")
-        return CleanModularFinanceCalculator, FinancialInputs
+        return FinancialValuationEngine, FinancialInputs
     except ImportError as e:
         logger.warning(f"Could not import from current finance_core: {e}")
         try:
             # Try importing from the backend finance_core directory
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'finance_core'))
-            from finance_calculator import CleanModularFinanceCalculator, FinancialInputs
+            from finance_calculator import FinancialValuationEngine, FinancialInputs
             logger.info("Successfully imported finance_calculator from backend finance_core")
-            return CleanModularFinanceCalculator, FinancialInputs
+            return FinancialValuationEngine, FinancialInputs
         except ImportError as e2:
             logger.warning(f"Could not import from backend finance_core: {e2}")
             try:
                 # Try importing from the parent directory
                 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-                from finance_core.finance_calculator import CleanModularFinanceCalculator, FinancialInputs
+                from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
                 logger.info("Successfully imported finance_calculator from parent directory")
-                return CleanModularFinanceCalculator, FinancialInputs
+                return FinancialValuationEngine, FinancialInputs
             except ImportError as e3:
                 logger.error(f"Failed to import finance_calculator from all paths: {e3}")
                 return None, None
@@ -43,7 +43,7 @@ def _import_finance_core():
             sys.path = _original_sys_path.copy()
 
 # Import finance core modules
-CleanModularFinanceCalculator, FinancialInputs = _import_finance_core()
+FinancialValuationEngine, FinancialInputs = _import_finance_core()
 
 class FinanceCoreService:
     """Service for integrating with the finance core calculator"""
@@ -53,9 +53,9 @@ class FinanceCoreService:
         self.calculator = None
         self._import_status = "unknown"
         
-        if CleanModularFinanceCalculator:
+        if FinancialValuationEngine:
             try:
-                self.calculator = CleanModularFinanceCalculator()
+                self.calculator = FinancialValuationEngine()
                 self._import_status = "success"
                 logger.info("Finance calculator initialized successfully")
             except Exception as e:
@@ -267,7 +267,7 @@ class FinanceCoreService:
             logger.info(f"Running {analysis_type} analysis...")
             
             if analysis_type == 'dcf_wacc':
-                results = self.calculator.run_dcf_valuation(fi)
+                results = self.calculator.calculate_dcf_valuation(fi)
                 logger.info("DCF WACC analysis completed successfully")
                 return {
                     'success': True,
@@ -280,20 +280,20 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'apv':
-                results = self.calculator.run_apv_valuation(fi)
+                results = self.calculator.calculate_apv_valuation(fi)
                 logger.info("APV analysis completed successfully")
                 return {
                     'success': True,
                     'results': {
                         'apv': results
                     },
-                    'enterprise_value': results.get('apv_enterprise_value'),
+                    'enterprise_value': results.get('enterprise_value'),
                     'equity_value': results.get('equity_value'),
                     'price_per_share': results.get('price_per_share')
                 }
             
             elif analysis_type == 'multiples':
-                results = self.calculator.run_comparable_multiples(fi)
+                results = self.calculator.analyze_comparable_multiples(fi)
                 logger.info("Multiples analysis completed successfully")
                 return {
                     'success': True,
@@ -306,7 +306,7 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'scenario':
-                results = self.calculator.run_scenario_analysis(fi)
+                results = self.calculator.perform_scenario_analysis(fi)
                 logger.info("Scenario analysis completed successfully")
                 return {
                     'success': True,
@@ -319,7 +319,7 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'sensitivity':
-                results = self.calculator.run_sensitivity_analysis(fi)
+                results = self.calculator.perform_sensitivity_analysis(fi)
                 logger.info("Sensitivity analysis completed successfully")
                 return {
                     'success': True,
@@ -332,7 +332,7 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'monte_carlo':
-                results = self.calculator.run_monte_carlo_simulation(fi)
+                results = self.calculator.simulate_monte_carlo(fi)
                 logger.info("Monte Carlo simulation completed successfully")
                 return {
                     'success': True,
