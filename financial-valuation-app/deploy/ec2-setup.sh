@@ -50,7 +50,23 @@ sudo usermod -a -G docker ec2-user
 # Configure Docker for lightweight instances
 echo "⚙️  Configuring Docker for lightweight instances..."
 sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+
+# Check if Docker service file has ulimit flags
+if sudo systemctl cat docker | grep -q "LimitNOFILE"; then
+    echo "⚠️  Docker service has ulimit flags, creating minimal daemon.json..."
+    sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+{
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+EOF
+else
+    echo "✅ Creating full Docker daemon configuration..."
+    sudo tee /etc/docker/daemon.json > /dev/null <<EOF
 {
   "storage-driver": "overlay2",
   "log-driver": "json-file",
@@ -67,6 +83,7 @@ sudo tee /etc/docker/daemon.json > /dev/null <<EOF
   }
 }
 EOF
+fi
 
 # Restart Docker with new configuration
 sudo systemctl restart docker
