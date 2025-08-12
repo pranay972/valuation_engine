@@ -156,6 +156,17 @@ function Results() {
     return isSelected;
   };
 
+  const findResultByAnalysisType = (analysisTypeId) => {
+    // Find the result that has this specific analysis type
+    for (const result of allResults) {
+      if (result.data && result.data.analysis && result.data.analysis.analysis_type === analysisTypeId) {
+        return result;
+      }
+    }
+    // Fallback to first result if no specific match found
+    return allResults[0];
+  };
+
   const renderDCFResults = (results) => {
     console.log('renderDCFResults called with:', results);
     // Extract the actual results data from the nested structure
@@ -597,22 +608,22 @@ function Results() {
           {console.log('Checking wasAnalysisSelected for dcf_wacc:', wasAnalysisSelected('dcf_wacc'))}
 
           {/* DCF Results - only if selected */}
-          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(allResults[0])}
+          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(findResultByAnalysisType('dcf_wacc'))}
 
           {/* APV Results - only if selected */}
-          {wasAnalysisSelected('apv') && renderAPVResults(allResults[0])}
+          {wasAnalysisSelected('apv') && renderAPVResults(findResultByAnalysisType('apv'))}
 
           {/* Comparable Multiples Results - only if selected */}
-          {wasAnalysisSelected('multiples') && renderComparableResults(allResults[0])}
+          {wasAnalysisSelected('multiples') && renderComparableResults(findResultByAnalysisType('multiples'))}
 
           {/* Scenario Analysis Results - only if selected */}
-          {wasAnalysisSelected('scenario') && renderScenarioResults(allResults[0])}
+          {wasAnalysisSelected('scenario') && renderScenarioResults(findResultByAnalysisType('scenario'))}
 
           {/* Sensitivity Analysis Results - only if selected */}
-          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(allResults[0])}
+          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(findResultByAnalysisType('sensitivity'))}
 
           {/* Monte Carlo Results - only if selected */}
-          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(allResults[0])}
+          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(findResultByAnalysisType('monte_carlo'))}
         </div>
       )}
 
