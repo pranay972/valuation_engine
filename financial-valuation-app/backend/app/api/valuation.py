@@ -18,6 +18,10 @@ def submit_inputs(analysis_id):
         analysis = Analysis.query.get_or_404(analysis_id)
         data = request.get_json()
         
+        # Debug logging
+        print(f"DEBUG: Received data for analysis {analysis_id}: {data}")
+        print(f"DEBUG: Analysis type: {analysis.analysis_type}")
+        
         # Validate required financial inputs
         required_fields = [
             'revenue', 'ebit_margin', 'tax_rate', 'capex', 'depreciation',
@@ -25,8 +29,11 @@ def submit_inputs(analysis_id):
         ]
         
         financial_inputs = data.get('financial_inputs', {})
+        print(f"DEBUG: Financial inputs: {financial_inputs}")
+        
         for field in required_fields:
             if field not in financial_inputs:
+                print(f"DEBUG: Missing required field: {field}")
                 return jsonify({
                     'success': False,
                     'error': f'Missing required financial input: {field}'
@@ -167,11 +174,15 @@ def submit_inputs(analysis_id):
         # Start background task for calculation
         task = run_valuation_task.delay(analysis_id)
         
+        # Store the task ID in the analysis record
+        analysis.task_id = task.id
+        db.session.commit()
+        
         return jsonify({
             'success': True,
             'data': analysis_input_schema.dump(analysis_input),
             'task_id': task.id,
-            'message': 'Inputs submitted successfully. Calculation started.'
+            'message': 'Inputs submitted successfully. Analysis started in background.'
         }), 201
         
     except Exception as e:

@@ -18,11 +18,11 @@ def calculate_net_income(ebit: float, debt: float, cost_of_debt: float, tax_rate
     net_income = ebt * (1 - tax_rate)
     return net_income
 
-def calculate_ebitda(ebit: float, depreciation: float, amortization: float = 0.0) -> float:
-    """Calculate EBITDA = EBIT + Depreciation + Amortization"""
-    return ebit + depreciation + amortization
+def calculate_ebitda(ebit: float, depreciation: float) -> float:
+    """Calculate EBITDA = EBIT + Depreciation"""
+    return ebit + depreciation
 
-def run_multiples_analysis(params: ValuationParameters, comps: pd.DataFrame) -> pd.DataFrame:
+def analyze_comparable_multiples(params: ValuationParameters, comps: pd.DataFrame) -> pd.DataFrame:
     """
     Perform comparable multiples analysis using peer company data.
     
@@ -48,27 +48,26 @@ def run_multiples_analysis(params: ValuationParameters, comps: pd.DataFrame) -> 
     )
     
     # Get terminal debt for Net Income calculation
-    terminal_debt = 0.0
+    terminal_debt = None
     if params.debt_schedule and params.revenue_projections:
         terminal_year = len(params.revenue_projections) - 1
-        terminal_debt = params.debt_schedule.get(terminal_year, 0.0)
+        terminal_debt = params.debt_schedule.get(terminal_year, None)
     
     # Calculate key financial metrics
     metric_map = {
         "EBITDA": calculate_ebitda(
             ebits[-1], 
-            params.depreciation_expense[-1] if params.depreciation_expense else 0.0,
-            0.0  # No amortization in current model
+            params.depreciation_expense[-1] if params.depreciation_expense else 0.0
         ),
         "Earnings": calculate_net_income(
             ebits[-1], 
-            terminal_debt, 
+            terminal_debt if terminal_debt is not None else 0.0, 
             params.cost_of_debt, 
             params.corporate_tax_rate
         ),
         "E": calculate_net_income(
             ebits[-1], 
-            terminal_debt, 
+            terminal_debt if terminal_debt is not None else 0.0, 
             params.cost_of_debt, 
             params.corporate_tax_rate
         ),

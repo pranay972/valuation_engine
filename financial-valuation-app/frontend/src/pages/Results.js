@@ -1,7 +1,7 @@
-import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
+import { analysisAPI, resultsAPI } from '../services/api';
 
 function Results() {
   const { analysisId } = useParams();
@@ -12,10 +12,29 @@ function Results() {
   const [selectedAnalysisTypes, setSelectedAnalysisTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [analysisStatus, setAnalysisStatus] = useState({});
+  const [isPolling, setIsPolling] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+  const pollingIntervalRef = useRef(null);
 
+  // Simple polling - just hit the API every 2 seconds
   useEffect(() => {
-    fetchResults();
-  }, [analysisId]);
+    if (selectedAnalysisIds.length === 0) return;
+
+    // Start polling
+    setIsPolling(true);
+    pollingIntervalRef.current = setInterval(() => {
+      fetchResults();
+    }, 2000);
+
+    // Cleanup
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [selectedAnalysisIds]);
 
   const fetchResults = async () => {
     try {
@@ -23,9 +42,10 @@ function Results() {
       const analysisIds = analysisId.split(',');
       setSelectedAnalysisIds(analysisIds);
 
-      // Fetch analysis types to get names
-      const typesResponse = await axios.get('/api/analysis/types');
-      const allTypes = typesResponse.data;
+      // Fetch analysis types
+      const typesResponse = await analysisAPI.getAnalysisTypes();
+      const allTypes = typesResponse.data.data;
+      setAnalysisTypes(allTypes);
 
       // Get selected analysis types from localStorage
       const storedSelectedTypes = localStorage.getItem('selectedAnalysisTypes');
@@ -40,10 +60,28 @@ function Results() {
         }
       }
 
+      // Check status for each analysis
+      const statusPromises = analysisIds.map(async (id) => {
+        try {
+          const response = await resultsAPI.getStatus(id);
+          return { id, status: response.data.data };
+        } catch (err) {
+          console.error(`Error fetching status for ${id}:`, err);
+          return { id, status: null };
+        }
+      });
+
+      const statuses = await Promise.all(statusPromises);
+      const statusMap = {};
+      statuses.forEach(({ id, status }) => {
+        if (status) statusMap[id] = status;
+      });
+      setAnalysisStatus(statusMap);
+
       // Fetch results for each analysis
       const resultsPromises = analysisIds.map(async (id) => {
         try {
-          const response = await axios.get(`/api/results/${id}/results`);
+          const response = await resultsAPI.getResults(id);
           return response.data;
         } catch (err) {
           console.error(`Error fetching results for ${id}:`, err);
@@ -55,20 +93,30 @@ function Results() {
       const validResults = results.filter(result => result !== null);
 
       setAllResults(validResults);
-      setAnalysisTypes(allTypes);
       setLoading(false);
 
-      // Debug logging
-      console.log('Analysis IDs from URL:', analysisIds);
-      console.log('Selected Analysis IDs:', selectedAnalysisIds);
-      console.log('Selected Analysis Types:', selectedTypes);
-      console.log('All Results:', validResults);
-      console.log('First Result Structure:', validResults[0] ? Object.keys(validResults[0]) : 'No results');
+      // Stop polling if all analyses are complete
+      const allComplete = Object.values(statusMap).every(status =>
+        status.status === 'completed' || status.status === 'failed'
+      );
+
+      if (allComplete) {
+        setIsPolling(false);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }
+
     } catch (err) {
       setError('Failed to load results');
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchResults();
+  }, [analysisId]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -89,15 +137,47 @@ function Results() {
   };
 
   const wasAnalysisSelected = (analysisTypeId) => {
+    // First check if it was explicitly selected from localStorage
     const isSelected = selectedAnalysisTypes.includes(analysisTypeId);
+
+    // If no explicit selection, check if we have results for this analysis type
+    if (!isSelected && allResults.length > 0) {
+      const result = allResults[0];
+      if (result.data && result.data.results && result.data.results.results_data) {
+        const resultsData = result.data.results.results_data;
+        // Check if this analysis type has results
+        if (resultsData[analysisTypeId]) {
+          return true;
+        }
+      }
+    }
+
     console.log(`Checking if ${analysisTypeId} was selected:`, isSelected, 'Selected Types:', selectedAnalysisTypes);
     return isSelected;
   };
 
-  const renderDCFResults = (results) => {
-    if (!results.dcf_valuation) return null;
+  const findResultByAnalysisType = (analysisTypeId) => {
+    // Find the result that has this specific analysis type
+    for (const result of allResults) {
+      if (result.data && result.data.analysis && result.data.analysis.analysis_type === analysisTypeId) {
+        return result;
+      }
+    }
+    // Fallback to first result if no specific match found
+    return allResults[0];
+  };
 
-    const dcf = results.dcf_valuation;
+  const renderDCFResults = (results) => {
+    console.log('renderDCFResults called with:', results);
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    console.log('Extracted resultsData:', resultsData);
+    if (!resultsData || !resultsData.dcf_wacc) {
+      console.log('No DCF results data found');
+      return null;
+    }
+
+    const dcf = resultsData.dcf_wacc;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -166,9 +246,11 @@ function Results() {
   };
 
   const renderAPVResults = (results) => {
-    if (!results.apv_valuation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.apv) return null;
 
-    const apv = results.apv_valuation;
+    const apv = resultsData.apv;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #28a745', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -215,14 +297,38 @@ function Results() {
   };
 
   const renderComparableResults = (results) => {
-    if (!results.comparable_valuation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.comparable_multiples) return null;
 
-    const comp = results.comparable_valuation;
+    const comp = resultsData.comparable_multiples;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #ffc107', paddingBottom: '10px', marginBottom: '20px' }}>
           📈 Comparable Multiples
         </h2>
+
+        {/* Summary Values */}
+        <div className="grid" style={{ marginBottom: '30px' }}>
+          <div className="card">
+            <h3>Enterprise Value</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
+              {formatCurrency(results?.data?.results?.enterprise_value)}
+            </p>
+          </div>
+          <div className="card">
+            <h3>Equity Value</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+              {formatCurrency(results?.data?.results?.equity_value)}
+            </p>
+          </div>
+          <div className="card">
+            <h3>Price Per Share</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
+              ${results?.data?.results?.price_per_share?.toFixed(2) || 'N/A'}
+            </p>
+          </div>
+        </div>
 
         <div className="grid">
           <div className="card">
@@ -264,27 +370,38 @@ function Results() {
   };
 
   const renderScenarioResults = (results) => {
-    if (!results.scenarios) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.scenarios) return null;
+
+    // The scenarios data is nested under resultsData.scenarios.scenarios
+    const scenarios = resultsData.scenarios.scenarios;
+    if (!scenarios) return null;
 
     return (
-      <div className="card" style={{ marginBottom: '30px' }}>
+      <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #17a2b8' }}>
         <h2 style={{ borderBottom: '2px solid #17a2b8', paddingBottom: '10px', marginBottom: '20px' }}>
           🎯 Scenario Analysis
         </h2>
 
+        {/* Detailed Scenario Breakdown */}
         <div className="grid">
-          {Object.entries(results.scenarios).map(([scenario, data]) => (
+          {Object.entries(scenarios).map(([scenario, data]) => (
             <div key={scenario} className="card">
-              <h3 style={{ textTransform: 'capitalize' }}>{scenario.replace('_', ' ')}</h3>
-              <p><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
-              <p><strong>Equity Value:</strong> {formatCurrency(data.equity)}</p>
-              <p><strong>Price per Share:</strong> ${data.price_per_share}</p>
+              <h3 style={{ textTransform: 'capitalize', color: scenario === 'Base Case' ? '#17a2b8' : scenario === 'Optimistic' ? '#28a745' : '#dc3545' }}>
+                {scenario.replace('_', ' ')}
+              </h3>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
+                <p style={{ color: '#007bff' }}><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
+                <p style={{ color: '#28a745' }}><strong>Equity Value:</strong> {formatCurrency(data.equity)}</p>
+                <p style={{ color: '#fd7e14' }}><strong>Price per Share:</strong> ${data.price_per_share}</p>
+              </div>
               {data.input_changes && (
-                <div style={{ marginTop: '10px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
-                  <strong>Input Changes:</strong>
+                <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <strong style={{ color: '#6c757d' }}>Input Changes:</strong>
                   {Object.entries(data.input_changes).map(([key, value]) => (
-                    <p key={key} style={{ margin: '2px 0', fontSize: '14px' }}>
-                      {key}: {Array.isArray(value) ? value.join(', ') : value}
+                    <p key={key} style={{ margin: '8px 0', fontSize: '14px', color: '#495057' }}>
+                      <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> {Array.isArray(value) ? value.join(', ') : value}
                     </p>
                   ))}
                 </div>
@@ -297,22 +414,28 @@ function Results() {
   };
 
   const renderSensitivityResults = (results) => {
-    if (!results.sensitivity_analysis) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.sensitivity_analysis) return null;
 
-    const sens = results.sensitivity_analysis;
+    const sens = resultsData.sensitivity_analysis;
+    const sensitivityResults = sens.sensitivity_results;
+
+    if (!sensitivityResults) return null;
+
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #fd7e14' }}>
         <h2 style={{ borderBottom: '2px solid #fd7e14', paddingBottom: '10px', marginBottom: '20px' }}>
           📉 Sensitivity Analysis
         </h2>
 
-        {Object.entries(sens).map(([parameter, data]) => (
+        {Object.entries(sensitivityResults).map(([parameter, data]) => (
           <div key={parameter} className="card" style={{ marginBottom: '20px' }}>
-            <h3 style={{ textTransform: 'capitalize' }}>{parameter.replace('_', ' ')}</h3>
+            <h3 style={{ textTransform: 'capitalize' }}>{parameter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
             <div className="grid">
               <div className="card">
                 <h4>Enterprise Value</h4>
-                {Object.entries(data.ev).map(([value, ev]) => (
+                {Object.entries(data.ev || {}).map(([value, ev]) => (
                   <p key={value} style={{ margin: '2px 0' }}>
                     {value}: {formatCurrency(ev)}
                   </p>
@@ -320,7 +443,7 @@ function Results() {
               </div>
               <div className="card">
                 <h4>Price per Share</h4>
-                {Object.entries(data.price_per_share).map(([value, price]) => (
+                {Object.entries(data.price_per_share || {}).map(([value, price]) => (
                   <p key={value} style={{ margin: '2px 0' }}>
                     {value}: ${price}
                   </p>
@@ -331,16 +454,18 @@ function Results() {
         ))}
         <div style={{ marginTop: '30px' }}>
           <h3>Enterprise Value Sensitivity (Chart)</h3>
-          <SensitivityChart data={sens} />
+          <SensitivityChart data={sensitivityResults} />
         </div>
       </div>
     );
   };
 
   const renderMonteCarloResults = (results) => {
-    if (!results.monte_carlo_simulation) return null;
+    // Extract the actual results data from the nested structure
+    const resultsData = results?.data?.results?.results_data;
+    if (!resultsData || !resultsData.monte_carlo) return null;
 
-    const mc = results.monte_carlo_simulation;
+    const mc = resultsData.monte_carlo;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -386,14 +511,49 @@ function Results() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h2>Loading results...</h2>
+  const renderSpinner = () => (
+    <div className="container">
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div className="spinner" style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #3498db',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 20px'
+        }}></div>
+        <h2>Processing Analysis...</h2>
+        <p>Your financial valuation is being calculated. This may take a few moments.</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+
+  const renderProcessingStatus = () => (
+    <div className="container">
+      <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
+          <h2>Analysis in Progress</h2>
+          <p>Your financial analysis is being processed. This may take a few minutes.</p>
+        </div>
+
+        <div style={{ marginTop: '20px', fontSize: '14px', color: '#6c757d' }}>
+          <p>🔄 Auto-refreshing every 2 seconds...</p>
+          <p>Last update: {lastUpdateTime.toLocaleTimeString()}</p>
         </div>
       </div>
-    );
+    </div>
+  );
+
+  if (loading) {
+    return renderSpinner();
   }
 
   if (error) {
@@ -409,11 +569,29 @@ function Results() {
     );
   }
 
+  // Check if any analysis is still processing
+  const hasProcessingAnalyses = Object.values(analysisStatus).some(status =>
+    status.status === 'processing' || status.status === 'pending'
+  );
+
+  if (hasProcessingAnalyses) {
+    return renderProcessingStatus();
+  }
+
   if (!allResults || allResults.length === 0) {
     return (
       <div className="container">
-        <div className="card">
-          <h2>No results found</h2>
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>No Results Available</h2>
+          <p>It looks like the analysis hasn't completed yet or there was an issue processing your inputs.</p>
+          <div style={{ marginTop: '20px' }}>
+            <button className="button" onClick={fetchResults}>
+              Check Again
+            </button>
+            <button className="button" onClick={() => navigate('/')} style={{ marginLeft: '10px' }}>
+              Start New Analysis
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -426,23 +604,26 @@ function Results() {
       {/* Show only the analysis types that were selected by the user */}
       {allResults.length > 0 && (
         <div>
+          {console.log('Rendering results section with allResults:', allResults)}
+          {console.log('Checking wasAnalysisSelected for dcf_wacc:', wasAnalysisSelected('dcf_wacc'))}
+
           {/* DCF Results - only if selected */}
-          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(allResults[0])}
+          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(findResultByAnalysisType('dcf_wacc'))}
 
           {/* APV Results - only if selected */}
-          {wasAnalysisSelected('apv') && renderAPVResults(allResults[0])}
+          {wasAnalysisSelected('apv') && renderAPVResults(findResultByAnalysisType('apv'))}
 
           {/* Comparable Multiples Results - only if selected */}
-          {wasAnalysisSelected('multiples') && renderComparableResults(allResults[0])}
+          {wasAnalysisSelected('multiples') && renderComparableResults(findResultByAnalysisType('multiples'))}
 
           {/* Scenario Analysis Results - only if selected */}
-          {wasAnalysisSelected('scenario') && renderScenarioResults(allResults[0])}
+          {wasAnalysisSelected('scenario') && renderScenarioResults(findResultByAnalysisType('scenario'))}
 
           {/* Sensitivity Analysis Results - only if selected */}
-          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(allResults[0])}
+          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(findResultByAnalysisType('sensitivity'))}
 
           {/* Monte Carlo Results - only if selected */}
-          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(allResults[0])}
+          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(findResultByAnalysisType('monte_carlo'))}
         </div>
       )}
 

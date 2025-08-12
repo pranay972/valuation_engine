@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { analysisAPI } from '../services/api';
 
 function AnalysisSelection() {
   const [analysisTypes, setAnalysisTypes] = useState([]);
@@ -15,8 +15,8 @@ function AnalysisSelection() {
 
   const fetchAnalysisTypes = async () => {
     try {
-      const response = await axios.get('/api/analysis/types');
-      setAnalysisTypes(response.data);
+      const response = await analysisAPI.getAnalysisTypes();
+      setAnalysisTypes(response.data.data);
       setLoading(false);
     } catch (err) {
       setError('Failed to load analysis types');
@@ -40,21 +40,37 @@ function AnalysisSelection() {
       alert('Please select at least one analysis type');
       return;
     }
-    
+
     // Navigate with selected analyses as URL parameters
     const analysisIds = selectedAnalyses.map(a => a.id).join(',');
-    
+
     // Store selected analysis types in localStorage for later use
     localStorage.setItem('selectedAnalysisTypes', JSON.stringify(selectedAnalyses));
-    
+
     navigate(`/analysis/${analysisIds}`);
   };
 
   if (loading) {
     return (
       <div className="container">
-        <div className="card">
-          <h2>Loading analysis types...</h2>
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div className="spinner" style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <h2>Loading Analysis Types</h2>
+          <p>Please wait while we load the available financial analysis options.</p>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </div>
     );
@@ -77,7 +93,7 @@ function AnalysisSelection() {
     <div className="container">
       <h1>Financial Valuation Analysis</h1>
       <p>Select one or more analysis types to begin:</p>
-      
+
       <div className="grid">
         {analysisTypes.map((analysis) => {
           const isSelected = selectedAnalyses.find(item => item.id === analysis.id);
@@ -113,8 +129,8 @@ function AnalysisSelection() {
             ))}
           </div>
         )}
-        <button 
-          className="button" 
+        <button
+          className="button"
           onClick={handleContinue}
           disabled={selectedAnalyses.length === 0}
         >

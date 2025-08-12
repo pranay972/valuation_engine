@@ -1,29 +1,148 @@
 import sys
 import os
 import json
+import logging
 from typing import Dict, Any, Optional
 import numpy as np
 
-# Add finance core to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'finance_core'))
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-try:
-    from finance_calculator import CleanModularFinanceCalculator, FinancialInputs
-except ImportError as e:
-    print(f"Warning: Could not import finance_calculator: {e}")
-    CleanModularFinanceCalculator = None
-    FinancialInputs = None
+# Store original sys.path to restore it later
+_original_sys_path = sys.path.copy()
+
+def _import_finance_core():
+    """Import finance core modules with proper path management and error handling"""
+    try:
+        # Try importing from the current finance_core directory first
+        from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
+        logger.info("Successfully imported finance_calculator from current finance_core")
+        return FinancialValuationEngine, FinancialInputs
+    except ImportError as e:
+        logger.warning(f"Could not import from current finance_core: {e}")
+        try:
+            # Try importing from the backend finance_core directory
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'finance_core'))
+            from finance_calculator import FinancialValuationEngine, FinancialInputs
+            logger.info("Successfully imported finance_calculator from backend finance_core")
+            return FinancialValuationEngine, FinancialInputs
+        except ImportError as e2:
+            logger.warning(f"Could not import from backend finance_core: {e2}")
+            try:
+                # Try importing from the parent directory
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+                from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
+                logger.info("Successfully imported finance_calculator from parent directory")
+                return FinancialValuationEngine, FinancialInputs
+            except ImportError as e3:
+                logger.error(f"Failed to import finance_calculator from all paths: {e3}")
+                return None, None
+        finally:
+            # Restore original sys.path to prevent corruption
+            sys.path = _original_sys_path.copy()
+
+# Import finance core modules
+FinancialValuationEngine, FinancialInputs = _import_finance_core()
 
 class FinanceCoreService:
     """Service for integrating with the finance core calculator"""
     
     def __init__(self):
+        """Initialize the service with proper error handling"""
         self.calculator = None
-        if CleanModularFinanceCalculator:
-            self.calculator = CleanModularFinanceCalculator()
+        self._import_status = "unknown"
+        
+        if FinancialValuationEngine:
+            try:
+                self.calculator = FinancialValuationEngine()
+                self._import_status = "success"
+                logger.info("Finance calculator initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing calculator: {e}")
+                self._import_status = f"initialization_failed: {str(e)}"
+        else:
+            self._import_status = "import_failed"
+            logger.error("Finance calculator could not be imported")
+    
+    def create_financial_inputs(self, inputs: Dict[str, Any]) -> Optional[FinancialInputs]:
+        """Create FinancialInputs object from dictionary with enhanced error handling"""
+        if not FinancialInputs:
+            error_msg = f"FinancialInputs class not available. Import status: {self._import_status}"
+            logger.error(error_msg)
+            return None
+        
+        try:
+            financial_inputs = inputs.get('financial_inputs', {})
+            
+            # Log input structure for debugging
+            logger.info(f"Creating FinancialInputs with {len(financial_inputs)} fields")
+            logger.debug(f"Financial inputs keys: {list(financial_inputs.keys())}")
+            
+            # Extract required fields with validation
+            required_fields = {
+                'revenue': financial_inputs.get('revenue', []),
+                'ebit_margin': financial_inputs.get('ebit_margin', 0.0),
+                'tax_rate': financial_inputs.get('tax_rate', 0.0),
+                'capex': financial_inputs.get('capex', []),
+                'depreciation': financial_inputs.get('depreciation', []),
+                'nwc_changes': financial_inputs.get('nwc_changes', []),
+                'share_count': financial_inputs.get('share_count', 0.0),
+                'terminal_growth': financial_inputs.get('terminal_growth_rate', 0.0),
+                'wacc': financial_inputs.get('weighted_average_cost_of_capital', 0.0),
+                'cost_of_debt': financial_inputs.get('cost_of_debt', 0.0)
+            }
+            
+            # Validate required fields
+            for field_name, field_value in required_fields.items():
+                if field_value is None:
+                    error_msg = f"Required field '{field_name}' is None"
+                    logger.error(error_msg)
+                    return None
+            
+            # Create FinancialInputs object with all required arguments
+            fi = FinancialInputs(
+                revenue=required_fields['revenue'],
+                ebit_margin=required_fields['ebit_margin'],
+                tax_rate=required_fields['tax_rate'],
+                capex=required_fields['capex'],
+                depreciation=required_fields['depreciation'],
+                nwc_changes=required_fields['nwc_changes'],
+                share_count=required_fields['share_count'],
+                terminal_growth=required_fields['terminal_growth'],
+                wacc=required_fields['wacc'],
+                cost_of_debt=required_fields['cost_of_debt']
+            )
+            
+            # Add APV-specific fields
+            if 'unlevered_cost_of_equity' in financial_inputs:
+                fi.unlevered_cost_of_equity = financial_inputs['unlevered_cost_of_equity']
+            
+            # Add other optional fields
+            optional_fields = [
+                'cash_balance', 'amortization', 'other_non_cash', 
+                'other_working_capital', 'comparable_multiples', 
+                'scenarios', 'sensitivity_analysis', 'monte_carlo_specs'
+            ]
+            
+            for field in optional_fields:
+                if field in financial_inputs:
+                    setattr(fi, field, financial_inputs[field])
+                elif field in inputs:
+                    setattr(fi, field, inputs[field])
+            
+            logger.info(f"Successfully created FinancialInputs object")
+            return fi
+            
+        except Exception as e:
+            error_msg = f"Error creating FinancialInputs: {e}"
+            logger.error(error_msg, exc_info=True)
+            return None
     
     def validate_inputs(self, analysis_type: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Validate inputs for specific analysis type"""
+        logger.info(f"Validating inputs for analysis type: {analysis_type}")
+        
         errors = []
         warnings = []
         
@@ -37,7 +156,9 @@ class FinanceCoreService:
         
         for field in required_fields:
             if field not in financial_inputs:
-                errors.append(f'Missing required field: {field}')
+                error_msg = f'Missing required field: {field}'
+                errors.append(error_msg)
+                logger.error(error_msg)
         
         # Analysis-specific validation
         if analysis_type == 'dcf_wacc':
@@ -90,110 +211,68 @@ class FinanceCoreService:
             if 'cost_of_debt' not in financial_inputs:
                 errors.append('Missing required field: cost_of_debt')
         
+        valid = len(errors) == 0
+        
+        if valid:
+            logger.info("Input validation passed successfully")
+        else:
+            logger.error(f"Input validation failed with {len(errors)} errors: {errors}")
+        
         return {
-            'valid': len(errors) == 0,
+            'valid': valid,
             'errors': errors,
             'warnings': warnings
         }
     
-    def create_financial_inputs(self, inputs: Dict[str, Any]) -> Optional[FinancialInputs]:
-        """Create FinancialInputs object from dictionary"""
-        if not FinancialInputs:
-            return None
-        
-        try:
-            financial_inputs = inputs.get('financial_inputs', {})
-            
-            # Extract required fields
-            revenue = financial_inputs.get('revenue', [])
-            ebit_margin = financial_inputs.get('ebit_margin', 0.0)
-            tax_rate = financial_inputs.get('tax_rate', 0.0)
-            capex = financial_inputs.get('capex', [])
-            depreciation = financial_inputs.get('depreciation', [])
-            nwc_changes = financial_inputs.get('nwc_changes', [])
-            share_count = financial_inputs.get('share_count', 0.0)
-            
-            # Create FinancialInputs object
-            fi = FinancialInputs(
-                revenue=revenue,
-                ebit_margin=ebit_margin,
-                tax_rate=tax_rate,
-                capex=capex,
-                depreciation=depreciation,
-                nwc_changes=nwc_changes,
-                share_count=share_count
-            )
-            
-            # Add optional fields
-            if 'weighted_average_cost_of_capital' in financial_inputs:
-                fi.wacc = financial_inputs['weighted_average_cost_of_capital']
-            
-            if 'terminal_growth_rate' in financial_inputs:
-                fi.terminal_growth = financial_inputs['terminal_growth_rate']
-            
-            if 'cost_of_debt' in financial_inputs:
-                fi.cost_of_debt = financial_inputs['cost_of_debt']
-            
-            if 'cash_balance' in financial_inputs:
-                fi.cash_balance = financial_inputs['cash_balance']
-            
-            if 'amortization' in financial_inputs:
-                fi.amortization = financial_inputs['amortization']
-            
-            if 'other_non_cash' in financial_inputs:
-                fi.other_non_cash = financial_inputs['other_non_cash']
-            
-            if 'other_working_capital' in financial_inputs:
-                fi.other_working_capital = financial_inputs['other_working_capital']
-            
-            # Add analysis-specific fields
-            if 'comparable_multiples' in inputs:
-                fi.comparable_multiples = inputs['comparable_multiples']
-            
-            if 'scenarios' in inputs:
-                fi.scenarios = inputs['scenarios']
-            
-            if 'sensitivity_analysis' in inputs:
-                fi.sensitivity_analysis = inputs['sensitivity_analysis']
-            
-            if 'monte_carlo_specs' in inputs:
-                fi.monte_carlo_specs = inputs['monte_carlo_specs']
-            
-            return fi
-            
-        except Exception as e:
-            print(f"Error creating FinancialInputs: {e}")
-            return None
-    
     def run_analysis(self, analysis_type: str, inputs: Dict[str, Any], company_name: str = "Company") -> Dict[str, Any]:
         """Run analysis using finance core calculator"""
+        logger.info(f"Starting analysis for {company_name} with type: {analysis_type}")
         if not self.calculator:
+            error_msg = 'Finance calculator not available'
+            logger.error(error_msg)
             return {
                 'success': False,
-                'error': 'Finance calculator not available'
+                'error': error_msg,
+                'error_type': 'calculator_unavailable',
+                'analysis_type': analysis_type,
+                'company_name': company_name
             }
         
         try:
             # Validate inputs
+            logger.info("Validating inputs...")
             validation = self.validate_inputs(analysis_type, inputs)
             if not validation['valid']:
+                error_msg = 'Invalid inputs'
+                logger.error(f"{error_msg}: {validation['errors']}")
                 return {
                     'success': False,
-                    'error': 'Invalid inputs',
-                    'validation_errors': validation['errors']
+                    'error': error_msg,
+                    'validation_errors': validation['errors'],
+                    'error_type': 'validation_failed',
+                    'analysis_type': analysis_type,
+                    'company_name': company_name
                 }
             
             # Create FinancialInputs object
             fi = self.create_financial_inputs(inputs)
             if not fi:
+                error_msg = 'Failed to create financial inputs'
+                logger.error(error_msg)
                 return {
                     'success': False,
-                    'error': 'Failed to create financial inputs'
+                    'error': error_msg,
+                    'error_type': 'financial_inputs_creation_failed',
+                    'analysis_type': analysis_type,
+                    'company_name': company_name
                 }
             
             # Run analysis based on type
+            logger.info(f"Running {analysis_type} analysis...")
+            
             if analysis_type == 'dcf_wacc':
-                results = self.calculator.run_dcf_valuation(fi)
+                results = self.calculator.calculate_dcf_valuation(fi)
+                logger.info("DCF WACC analysis completed successfully")
                 return {
                     'success': True,
                     'results': {
@@ -205,43 +284,56 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'apv':
-                results = self.calculator.run_apv_valuation(fi)
+                results = self.calculator.calculate_apv_valuation(fi)
+                logger.info("APV analysis completed successfully")
                 return {
                     'success': True,
                     'results': {
                         'apv': results
                     },
-                    'enterprise_value': results.get('apv_enterprise_value'),
+                    'enterprise_value': results.get('enterprise_value'),
                     'equity_value': results.get('equity_value'),
                     'price_per_share': results.get('price_per_share')
                 }
             
             elif analysis_type == 'multiples':
-                results = self.calculator.run_comparable_multiples(fi)
+                results = self.calculator.analyze_comparable_multiples(fi)
+                logger.info("Multiples analysis completed successfully")
+                
+                # The multiples analysis already returns the proper summary values
+                # Just extract them directly from the results
                 return {
                     'success': True,
                     'results': {
                         'comparable_multiples': results
                     },
-                    'enterprise_value': results.get('mean_enterprise_value'),
-                    'equity_value': results.get('mean_equity_value'),
-                    'price_per_share': results.get('mean_price_per_share')
+                    'enterprise_value': results.get('enterprise_value'),
+                    'equity_value': results.get('equity_value'),
+                    'price_per_share': results.get('price_per_share')
                 }
             
             elif analysis_type == 'scenario':
-                results = self.calculator.run_scenario_analysis(fi)
+                results = self.calculator.perform_scenario_analysis(fi)
+                logger.info("Scenario analysis completed successfully")
+                
+                # Extract summary values from the base case scenario
+                # The results structure has nested 'scenarios' with 'Base Case' as the key
+                scenarios_data = results.get('scenarios', {})
+                base_case = scenarios_data.get('Base Case', {})
+                
                 return {
                     'success': True,
                     'results': {
                         'scenarios': results
                     },
-                    'enterprise_value': results.get('base_case', {}).get('enterprise_value'),
-                    'equity_value': results.get('base_case', {}).get('equity_value'),
-                    'price_per_share': results.get('base_case', {}).get('price_per_share')
+                    'enterprise_value': base_case.get('ev'),  # 'ev' is the enterprise value
+                    'equity_value': base_case.get('equity'),  # 'equity' is the equity value
+                    'price_per_share': base_case.get('price_per_share')
                 }
             
             elif analysis_type == 'sensitivity':
-                results = self.calculator.run_sensitivity_analysis(fi)
+                results = self.calculator.perform_sensitivity_analysis(fi)
+                logger.info("Sensitivity analysis completed successfully")
                 return {
                     'success': True,
                     'results': {
@@ -253,7 +345,8 @@ class FinanceCoreService:
                 }
             
             elif analysis_type == 'monte_carlo':
-                results = self.calculator.run_monte_carlo_simulation(fi)
+                results = self.calculator.simulate_monte_carlo(fi)
+                logger.info("Monte Carlo simulation completed successfully")
                 return {
                     'success': True,
                     'results': {
@@ -265,15 +358,28 @@ class FinanceCoreService:
                 }
             
             else:
+                error_msg = f'Unsupported analysis type: {analysis_type}'
+                logger.error(error_msg)
                 return {
                     'success': False,
-                    'error': f'Unsupported analysis type: {analysis_type}'
+                    'error': error_msg,
+                    'error_type': 'unsupported_analysis_type',
+                    'analysis_type': analysis_type,
+                    'company_name': company_name
                 }
         
         except Exception as e:
+            import traceback
+            error_msg = f'Analysis failed: {str(e)}'
+            logger.error(f"{error_msg}\nTraceback: {traceback.format_exc()}")
             return {
                 'success': False,
-                'error': f'Analysis failed: {str(e)}'
+                'error': error_msg,
+                'error_type': 'calculation_exception',
+                'analysis_type': analysis_type,
+                'company_name': company_name,
+                'exception_details': str(e),
+                'traceback': traceback.format_exc()
             }
     
     def get_sample_inputs(self, analysis_type: str) -> Dict[str, Any]:

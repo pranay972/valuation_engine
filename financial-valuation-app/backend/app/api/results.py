@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import Analysis, AnalysisResult, analysis_result_schema
-from app.services.celery_service import get_task_status
 import json
 
 results_bp = Blueprint('results', __name__)
@@ -50,7 +49,15 @@ def get_analysis_status(analysis_id):
         # Get task status if processing
         task_status = None
         if analysis.status == 'processing':
-            task_status = get_task_status(analysis_id)
+            try:
+                from app.services.celery_service import get_task_status
+                task_status = get_task_status(analysis_id)
+            except Exception as e:
+                # Fallback if task status check fails
+                task_status = {
+                    'state': 'PROCESSING',
+                    'status': f'Analysis is being processed (status check error: {str(e)})'
+                }
         
         response_data = {
             'analysis_id': analysis.id,

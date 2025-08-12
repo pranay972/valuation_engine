@@ -1,0 +1,97 @@
+Field,Value,Description
+Company Name,TechCorp Inc.,Name of the company being valued
+Valuation Date,2024-01-01,Date of valuation (YYYY-MM-DD)
+Forecast Years,5,Number of years to forecast
+Revenue Year 1,1250.0,Revenue for year 1 (millions)
+Revenue Year 2,1375.0,Revenue for year 2 (millions)
+Revenue Year 3,1512.5,Revenue for year 3 (millions)
+Revenue Year 4,1663.8,Revenue for year 4 (millions)
+Revenue Year 5,1830.1,Revenue for year 5 (millions)
+EBIT Margin,0.18,EBIT margin as decimal
+Tax Rate,0.25,Corporate tax rate as decimal
+CapEx Year 1,187.5,Capital expenditures year 1 (millions)
+CapEx Year 2,206.3,Capital expenditures year 2 (millions)
+CapEx Year 3,226.9,Capital expenditures year 3 (millions)
+CapEx Year 4,249.6,Capital expenditures year 4 (millions)
+CapEx Year 5,274.5,Capital expenditures year 5 (millions)
+Depreciation Year 1,125.0,Depreciation year 1 (millions)
+Depreciation Year 2,137.5,Depreciation year 2 (millions)
+Depreciation Year 3,151.3,Depreciation year 3 (millions)
+Depreciation Year 4,166.4,Depreciation year 4 (millions)
+Depreciation Year 5,183.0,Depreciation year 5 (millions)
+
+NWC Changes Year 1,-25.0,Net working capital changes year 1 (millions) - negative = cash generation
+NWC Changes Year 2,-27.5,Net working capital changes year 2 (millions) - negative = cash generation
+NWC Changes Year 3,-30.3,Net working capital changes year 3 (millions) - negative = cash generation
+NWC Changes Year 4,-33.3,Net working capital changes year 4 (millions) - negative = cash generation
+NWC Changes Year 5,-36.6,Net working capital changes year 5 (millions) - negative = cash generation
+
+WACC,0.095,Weighted average cost of capital as decimal
+Terminal Growth Rate,0.025,Terminal growth rate as decimal
+Share Count,45.2,Shares outstanding (millions)
+Cost of Debt,0.065,Cost of debt as decimal
+Cash Balance,50.0,Cash balance (millions)
+Risk Free Rate,0.03,Risk-free rate as decimal
+Market Risk Premium,0.06,Market risk premium as decimal
+Levered Beta,1.2,Levered beta
+Unlevered Beta,1.2,Unlevered beta
+Target Debt Ratio,0.3,Target debt ratio as decimal
+Unlevered Cost of Equity,0.0,Unlevered cost of equity (calculated if 0)
+Cost of Equity,0.14,Cost of equity as decimal
+
+VALUATION CONFIGURATION
+Use Input WACC,True,Use input WACC directly (True) or calculate WACC (False)
+Use Debt Schedule,False,Use detailed debt schedule (True) or simple net debt (False)
+Current Debt Balance,150.0,Current debt balance (millions)
+
+COMPARABLE MULTIPLES
+EV/EBITDA Multiple 1,12.5,Comparable company EV/EBITDA multiple
+EV/EBITDA Multiple 2,14.2,Comparable company EV/EBITDA multiple
+EV/EBITDA Multiple 3,13.8,Comparable company EV/EBITDA multiple
+EV/EBITDA Multiple 4,15.1,Comparable company EV/EBITDA multiple
+EV/EBITDA Multiple 5,13.9,Comparable company EV/EBITDA multiple
+EV/Revenue Multiple 1,2.8,Comparable company EV/Revenue multiple
+EV/Revenue Multiple 2,3.1,Comparable company EV/Revenue multiple
+EV/Revenue Multiple 3,2.9,Comparable company EV/Revenue multiple
+EV/Revenue Multiple 4,3.3,Comparable company EV/Revenue multiple
+EV/Revenue Multiple 5,3.0,Comparable company EV/Revenue multiple
+P/E Multiple 1,18.5,Comparable company P/E multiple
+P/E Multiple 2,22.1,Comparable company P/E multiple
+P/E Multiple 3,20.8,Comparable company P/E multiple
+P/E Multiple 4,24.3,Comparable company P/E multiple
+P/E Multiple 5,21.4,Comparable company P/E multiple
+
+SCENARIO ANALYSIS
+Optimistic EBIT Margin,0.22,Optimistic scenario EBIT margin
+Optimistic Terminal Growth,0.035,Optimistic scenario terminal growth rate
+Optimistic WACC,0.085,Optimistic scenario WACC
+Pessimistic EBIT Margin,0.14,Pessimistic scenario EBIT margin
+Pessimistic Terminal Growth,0.015,Pessimistic scenario terminal growth rate
+Pessimistic WACC,0.105,Pessimistic scenario WACC
+
+MONTE CARLO SIMULATION
+MC EBIT Margin Mean,0.18,Monte Carlo EBIT margin mean
+MC EBIT Margin Std,0.02,Monte Carlo EBIT margin standard deviation
+MC Terminal Growth Mean,0.025,Monte Carlo terminal growth mean
+MC Terminal Growth Std,0.005,Monte Carlo terminal growth standard deviation
+MC WACC Mean,0.095,Monte Carlo WACC mean
+MC WACC Std,0.01,Monte Carlo WACC standard deviation
+
+SENSITIVITY ANALYSIS
+Sensitivity EBIT Margin 1,0.15,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 2,0.16,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 3,0.17,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 4,0.18,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 5,0.19,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 6,0.20,Sensitivity analysis EBIT margin
+Sensitivity EBIT Margin 7,0.21,Sensitivity analysis EBIT margin
+Sensitivity Terminal Growth 1,0.02,Sensitivity analysis terminal growth rate
+Sensitivity Terminal Growth 2,0.0225,Sensitivity analysis terminal growth rate
+Sensitivity Terminal Growth 3,0.025,Sensitivity analysis terminal growth rate
+Sensitivity Terminal Growth 4,0.0275,Sensitivity analysis terminal growth rate
+Sensitivity Terminal Growth 5,0.03,Sensitivity analysis terminal growth rate
+Sensitivity WACC 1,0.085,Sensitivity analysis WACC
+Sensitivity WACC 2,0.09,Sensitivity analysis WACC
+Sensitivity WACC 3,0.095,Sensitivity analysis WACC
+Sensitivity WACC 4,0.10,Sensitivity analysis WACC
+Sensitivity WACC 5,0.105,Sensitivity analysis WACC

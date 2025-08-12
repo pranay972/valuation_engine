@@ -11,6 +11,85 @@ services:
       - ./backend:/app
     environment:
       - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: financial_valuation_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Celery Worker
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: financial_valuation_celery
+    command: celery -A app.services.celery_service.celery worker --loglevel=info --concurrency=1
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.services.celery_service.celery", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery Beat (for scheduled tasks)
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: financial_valuation_celery_beat
+    command: celery -A app.services.celery_service.celery beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+
+  # Celery Flower (for monitoring and debugging)
+  celery-flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: financial_valuation_celery_flower
+    command: celery -A app.services.celery_service.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
 
   # React Frontend
   frontend:
@@ -26,4 +105,7 @@ services:
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://backend:5000/api 
+      - REACT_APP_API_URL=http://localhost:8001/api
+
+volumes:
+  redis_data: 

@@ -11,7 +11,7 @@ from typing import Dict, Any, List
 from params import ValuationParameters
 from dcf import calculate_dcf_valuation_wacc
 
-def run_scenarios(params: ValuationParameters) -> pd.DataFrame:
+def perform_scenario_analysis(params: ValuationParameters) -> pd.DataFrame:
     """
     Run scenario analysis by applying parameter overrides to base case.
     

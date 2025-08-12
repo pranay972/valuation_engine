@@ -15,7 +15,7 @@ def create_parameter_copy(params: ValuationParameters) -> ValuationParameters:
     """Create a copy of parameters for sensitivity analysis."""
     return deepcopy(params)
 
-def run_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
+def perform_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
     """
     Run sensitivity analysis by varying parameters and calculating DCF values.
     
@@ -36,10 +36,10 @@ def run_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
     for param_name, test_values in params.sensitivity_parameter_ranges.items():
         # Map range parameter names to actual parameter names
         param_mapping = {
-            "wacc_range": "weighted_average_cost_of_capital",
-            "ebit_margin_range": "ebit_margin", 
-            "terminal_growth_range": "terminal_growth_rate",
-            "target_debt_ratio_range": "target_debt_to_value_ratio"
+            "weighted_average_cost_of_capital": "weighted_average_cost_of_capital",
+            "ebit_margin": "ebit_margin", 
+            "terminal_growth_rate": "terminal_growth_rate",
+            "target_debt_to_value_ratio": "target_debt_to_value_ratio"
         }
         actual_param_name = param_mapping.get(param_name, param_name)
         
@@ -56,8 +56,9 @@ def run_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
                 
                 # For WACC changes, ensure it's used directly (not overridden by target structure)
                 if actual_param_name == "weighted_average_cost_of_capital":
-                    # Temporarily set target_debt_to_value_ratio to 0 to avoid override
-                    p.target_debt_to_value_ratio = 0.0
+                    # Temporarily set target_debt_to_value_ratio to None to avoid override
+                    # This will be handled by the WACC calculation logic
+                    p.target_debt_to_value_ratio = None
                 
                 # Run DCF calculation
                 ev, equity, price_per_share, _, _, _ = calculate_dcf_valuation_wacc(p)
@@ -67,7 +68,8 @@ def run_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
                 data[f"{param_name}_price_per_share"][i] = price_per_share if price_per_share else float('nan')
                 
             except Exception as e:
-                data[param_name][i] = float('nan')
+                data[f"{param_name}_ev"][i] = float('nan')
+                data[f"{param_name}_price_per_share"][i] = float('nan')
     
     # Convert to DataFrame
     return pd.DataFrame(data) 

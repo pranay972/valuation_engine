@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -53,7 +53,7 @@ export const resultsAPI = {
   getResults: (analysisId) => api.get(`/results/${analysisId}/results`),
   getStatus: (analysisId) => api.get(`/results/${analysisId}/status`),
   getSummary: (analysisId) => api.get(`/results/${analysisId}/results/summary`),
-  exportResults: (analysisId, format = 'json') => 
+  exportResults: (analysisId, format = 'json') =>
     api.get(`/results/${analysisId}/results/export?format=${format}`),
   deleteResults: (analysisId) => api.delete(`/results/${analysisId}/results`),
 };

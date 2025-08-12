@@ -63,20 +63,56 @@ def get_analysis_types():
         'data': analysis_types
     })
 
-@analysis_bp.route('/', methods=['GET'])
-def get_analyses():
-    """Get all analyses"""
-    try:
-        analyses = Analysis.query.order_by(Analysis.created_at.desc()).all()
-        return jsonify({
-            'success': True,
-            'data': analyses_schema.dump(analyses)
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+@analysis_bp.route('/', methods=['GET', 'POST'])
+def analyses():
+    """Handle both GET (list all) and POST (create new) for analyses"""
+    if request.method == 'GET':
+        """Get all analyses"""
+        try:
+            analyses = Analysis.query.order_by(Analysis.created_at.desc()).all()
+            return jsonify({
+                'success': True,
+                'data': analyses_schema.dump(analyses)
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    elif request.method == 'POST':
+        """Create a new analysis"""
+        try:
+            data = request.get_json()
+            
+            # Validate required fields
+            if not data or 'analysis_type' not in data:
+                return jsonify({
+                    'success': False,
+                    'error': 'analysis_type is required'
+                }), 400
+            
+            # Create new analysis
+            analysis = Analysis(
+                name=data.get('name', f"{data['analysis_type'].replace('_', ' ').title()} Analysis"),
+                analysis_type=data['analysis_type'],
+                company_name=data.get('company_name', 'Unknown Company'),
+                status='pending'
+            )
+            
+            db.session.add(analysis)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'data': analysis_schema.dump(analysis)
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
 
 @analysis_bp.route('/<int:analysis_id>', methods=['GET'])
 def get_analysis(analysis_id):
@@ -88,43 +124,6 @@ def get_analysis(analysis_id):
             'data': analysis_schema.dump(analysis)
         })
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@analysis_bp.route('/', methods=['POST'])
-def create_analysis():
-    """Create a new analysis"""
-    try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['name', 'analysis_type', 'company_name']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({
-                    'success': False,
-                    'error': f'Missing required field: {field}'
-                }), 400
-        
-        # Create analysis
-        analysis = Analysis(
-            name=data['name'],
-            analysis_type=data['analysis_type'],
-            company_name=data['company_name']
-        )
-        
-        db.session.add(analysis)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'data': analysis_schema.dump(analysis)
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
         return jsonify({
             'success': False,
             'error': str(e)

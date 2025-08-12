@@ -20,16 +20,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the modules to test
 from finance_core.finance_calculator import (
-    CleanModularFinanceCalculator, 
+    FinancialValuationEngine, 
     FinancialInputs, 
-    create_financial_inputs_from_json
+    parse_financial_inputs
 )
 from finance_core.params import ValuationParameters
 from finance_core.dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
-from finance_core.multiples import run_multiples_analysis
-from finance_core.scenario import run_scenarios
-from finance_core.sensitivity import run_sensitivity_analysis
-from finance_core.monte_carlo import run_monte_carlo
+from finance_core.multiples import analyze_comparable_multiples
+from finance_core.scenario import perform_scenario_analysis
+from finance_core.sensitivity import perform_sensitivity_analysis
+from finance_core.monte_carlo import simulate_monte_carlo
 from finance_core.drivers import project_ebit_series, project_free_cash_flow
 
 class TestFinancialInputs:
@@ -47,10 +47,7 @@ class TestFinancialInputs:
             terminal_growth=0.03,
             wacc=0.10,
             share_count=10.0,
-            cost_of_debt=0.06,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            cost_of_debt=0.06
         )
         
         assert inputs.revenue == [100, 110, 121]
@@ -74,20 +71,17 @@ class TestDCFValuation:
             terminal_growth=0.03,
             wacc=0.10,
             share_count=10.0,
-            cost_of_debt=0.06,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            cost_of_debt=0.06
         )
     
     @pytest.fixture
     def calculator(self):
         """Create calculator instance."""
-        return CleanModularFinanceCalculator()
+        return FinancialValuationEngine()
     
     def test_dcf_valuation_basic(self, test_inputs, calculator):
         """Test basic DCF valuation."""
-        result = calculator.run_dcf_valuation(test_inputs)
+        result = calculator.calculate_dcf_valuation(test_inputs)
         
         # Check that no error occurred
         assert "error" not in result
@@ -119,15 +113,12 @@ class TestDCFValuation:
             terminal_growth=0.15,  # Higher than WACC
             wacc=0.10,
             share_count=10.0,
-            cost_of_debt=0.06,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            cost_of_debt=0.06
         )
         
         # Test that exception is raised for invalid inputs
         with pytest.raises(Exception) as exc_info:
-            calculator.run_dcf_valuation(invalid_inputs)
+            calculator.calculate_dcf_valuation(invalid_inputs)
         
         # Verify the error message contains expected content
         error_message = str(exc_info.value)
@@ -151,20 +142,17 @@ class TestAPVValuation:
             wacc=0.10,
             share_count=10.0,
             cost_of_debt=0.06,
-            unlevered_cost_of_equity=0.12,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            unlevered_cost_of_equity=0.12
         )
     
     @pytest.fixture
     def calculator(self):
         """Create calculator instance."""
-        return CleanModularFinanceCalculator()
+        return FinancialValuationEngine()
     
     def test_apv_valuation_basic(self, test_inputs, calculator):
         """Test basic APV valuation."""
-        result = calculator.run_apv_valuation(test_inputs)
+        result = calculator.calculate_apv_valuation(test_inputs)
         
         # Check that no error occurred
         assert "error" not in result
@@ -200,20 +188,17 @@ class TestComparableMultiples:
             comparable_multiples={
                 "EV/EBITDA": [12.5, 14.2, 13.8, 15.1],
                 "P/E": [18.5, 22.1, 20.8, 24.3]
-            },
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            }
         )
     
     @pytest.fixture
     def calculator(self):
         """Create calculator instance."""
-        return CleanModularFinanceCalculator()
+        return FinancialValuationEngine()
     
     def test_multiples_analysis_basic(self, test_inputs, calculator):
         """Test basic multiples analysis."""
-        result = calculator.run_comparable_multiples(test_inputs)
+        result = calculator.analyze_comparable_multiples(test_inputs)
         
         # Check that no error occurred
         assert "error" not in result
@@ -240,16 +225,13 @@ class TestComparableMultiples:
             terminal_growth=0.03,
             wacc=0.10,
             share_count=10.0,
-            cost_of_debt=0.06,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            cost_of_debt=0.06
             # No comparable_multiples
         )
         
         # Test that exception is raised for missing comparable data
         with pytest.raises(Exception) as exc_info:
-            calculator.run_comparable_multiples(inputs_no_multiples)
+            calculator.analyze_comparable_multiples(inputs_no_multiples)
         
         # Verify the error message contains expected content
         error_message = str(exc_info.value)
@@ -284,20 +266,17 @@ class TestScenarioAnalysis:
                     "terminal_growth_rate": 0.02,
                     "weighted_average_cost_of_capital": 0.12
                 }
-            },
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            }
         )
     
     @pytest.fixture
     def calculator(self):
         """Create calculator instance."""
-        return CleanModularFinanceCalculator()
+        return FinancialValuationEngine()
     
     def test_scenario_analysis_basic(self, test_inputs, calculator):
         """Test basic scenario analysis."""
-        result = calculator.run_scenario_analysis(test_inputs)
+        result = calculator.perform_scenario_analysis(test_inputs)
         
         # Check that no error occurred
         assert "error" not in result
@@ -347,20 +326,17 @@ class TestComprehensiveValuation:
                     "distribution": "normal",
                     "params": {"mean": 0.15, "std": 0.02}
                 }
-            },
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            }
         )
     
     @pytest.fixture
     def calculator(self):
         """Create calculator instance."""
-        return CleanModularFinanceCalculator()
+        return FinancialValuationEngine()
     
     def test_comprehensive_valuation(self, test_inputs, calculator):
         """Test comprehensive valuation that runs all methods."""
-        result = calculator.run_comprehensive_valuation(
+        result = calculator.perform_comprehensive_valuation(
             test_inputs, 
             "Test Company", 
             "2024-01-01"
@@ -388,7 +364,7 @@ class TestComprehensiveValuation:
 class TestJSONIntegration:
     """Test JSON input/output functionality."""
     
-    def test_create_financial_inputs_from_json(self):
+    def test_parse_financial_inputs(self):
         """Test creating FinancialInputs from JSON data."""
         json_data = {
             "company_name": "Test Company",
@@ -404,10 +380,7 @@ class TestJSONIntegration:
                 "terminal_growth_rate": 0.03,
                 "share_count": 10.0,
                 "cost_of_debt": 0.06,
-                "cash_balance": 50.0,
-                "amortization": [2, 2.2, 2.4],
-                "other_non_cash": [1, 1.1, 1.2],
-                "other_working_capital": [0.5, 0.55, 0.6]
+                "cash_balance": 50.0
             },
             "comparable_multiples": {
                 "EV/EBITDA": [12.5, 14.2, 13.8, 15.1],
@@ -415,7 +388,7 @@ class TestJSONIntegration:
             }
         }
         
-        inputs = create_financial_inputs_from_json(json_data)
+        inputs = parse_financial_inputs(json_data)
         
         # Check that inputs were created correctly
         assert inputs.revenue == [100, 110, 121]
@@ -438,11 +411,11 @@ class TestErrorHandling:
     def test_invalid_json_input(self):
         """Test handling of invalid JSON input."""
         with pytest.raises(Exception):
-            create_financial_inputs_from_json({"invalid": "data"})
+            parse_financial_inputs({"invalid": "data"})
     
     def test_missing_required_fields(self):
         """Test handling of missing required fields."""
-        calculator = CleanModularFinanceCalculator()
+        calculator = FinancialValuationEngine()
         
         # Test with missing required fields
         invalid_inputs = FinancialInputs(
@@ -456,13 +429,10 @@ class TestErrorHandling:
             terminal_growth=0.03,
             wacc=0.10,
             share_count=10.0,
-            cost_of_debt=0.06,
-            amortization=[2, 2.2, 2.4],
-            other_non_cash=[1, 1.1, 1.2],
-            other_working_capital=[0.5, 0.55, 0.6]
+            cost_of_debt=0.06
         )
         
         # This should not raise an exception but return an error in the result
-        result = calculator.run_dcf_valuation(invalid_inputs)
+        result = calculator.calculate_dcf_valuation(invalid_inputs)
         # The result should either be valid or contain an error message
         assert isinstance(result, dict) 

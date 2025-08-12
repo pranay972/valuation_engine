@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -29,6 +29,9 @@ def create_app(config_name=None):
     else:
         app.config.from_object('app.config.DevelopmentConfig')
     
+    # Configure Flask to handle trailing slashes
+    app.url_map.strict_slashes = False
+    
     # Initialize extensions with app
     db.init_app(app)
     migrate.init_app(app, db)
@@ -45,6 +48,27 @@ def create_app(config_name=None):
     app.register_blueprint(analysis_bp, url_prefix='/api/analysis')
     app.register_blueprint(valuation_bp, url_prefix='/api/valuation')
     app.register_blueprint(results_bp, url_prefix='/api/results')
+    
+    # Swagger UI registration
+    try:
+        from swagger import swagger_ui_blueprint
+        app.register_blueprint(swagger_ui_blueprint)
+    except Exception as e:
+        # Swagger is optional; avoid crashing app if unavailable
+        pass
+    
+    # Serve OpenAPI specification from backend/static/swagger.json
+    backend_root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+    swagger_static_dir = os.path.join(backend_root_dir, 'static')
+
+    @app.route('/static/swagger.json', methods=['GET'])
+    def swagger_json():
+        return send_from_directory(swagger_static_dir, 'swagger.json')
+    
+    # Basic health endpoint
+    @app.route('/health', methods=['GET'])
+    def health():
+        return {"status": "healthy"}
     
     # Create database tables
     with app.app_context():

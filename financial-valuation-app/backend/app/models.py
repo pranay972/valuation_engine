@@ -13,6 +13,7 @@ class Analysis(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    task_id = db.Column(db.String(255), nullable=True)  # Celery task ID for status tracking
     
     # Relationships
     inputs = db.relationship('AnalysisInput', backref='analysis', uselist=False, cascade='all, delete-orphan')
