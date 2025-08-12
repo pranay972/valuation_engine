@@ -47,45 +47,14 @@ sudo yum install -y docker
 sudo service docker start
 sudo usermod -a -G docker ec2-user
 
-# Configure Docker for lightweight instances
-echo "⚙️  Configuring Docker for lightweight instances..."
-sudo mkdir -p /etc/docker
-
-# Check if Docker service file has ulimit flags
-if sudo systemctl cat docker | grep -q "LimitNOFILE"; then
-    echo "⚠️  Docker service has ulimit flags, creating minimal daemon.json..."
-    sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-{
-  "storage-driver": "overlay2",
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  }
-}
-EOF
-else
-    echo "✅ Creating full Docker daemon configuration..."
-    sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-{
-  "storage-driver": "overlay2",
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
-  "default-ulimits": {
-    "nofile": {
-      "Hard": 64000,
-      "Name": "nofile",
-      "Soft": 64000
-    }
-  }
-}
-EOF
+# Use Docker with default configuration (no custom daemon.json)
+echo "✅ Using Docker with default configuration..."
+if [ -f "/etc/docker/daemon.json" ]; then
+    echo "🗑️  Removing existing Docker daemon configuration..."
+    sudo rm -f /etc/docker/daemon.json
 fi
 
-# Restart Docker with new configuration
+# Ensure Docker is running with default settings
 sudo systemctl restart docker
 
 # Install Docker Compose
