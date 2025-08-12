@@ -96,6 +96,39 @@ else
     echo "⚠️  Not a git repository, skipping git pull"
 fi
 
+# Set environment variables for production deployment
+echo "⚙️  Setting production environment variables..."
+
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo "📄 Loading environment variables from .env file..."
+    export $(cat .env | grep -v '^#' | xargs)
+    echo "✅ Environment variables loaded from .env file"
+else
+    echo "⚠️  No .env file found, using default production values..."
+    export FLASK_ENV=production
+    export SECRET_KEY=${SECRET_KEY:-production-secret-key-change-me}
+    export DATABASE_URL=${DATABASE_URL:-sqlite:///financial_valuation.db}
+    export DEV_DATABASE_URL=${DEV_DATABASE_URL:-sqlite:///financial_valuation.db}
+    export TEST_DATABASE_URL=${TEST_DATABASE_URL:-sqlite:///financial_valuation.db}
+    
+    # Set frontend API URL for production
+    export REACT_APP_API_URL=${REACT_APP_API_URL:-https://valuationengine.app/api}
+fi
+
+# Validate required environment variables
+echo "🔍 Validating environment variables..."
+if [ -z "$REACT_APP_API_URL" ]; then
+    echo "❌ Error: REACT_APP_API_URL is not set!"
+    echo "   Please set this to your production domain (e.g., https://yourdomain.com/api)"
+    exit 1
+fi
+
+echo "✅ Environment variables configured:"
+echo "   FLASK_ENV: ${FLASK_ENV}"
+echo "   REACT_APP_API_URL: ${REACT_APP_API_URL}"
+echo "   DATABASE_URL: ${DATABASE_URL}"
+
 # Stop existing containers
 echo "🛑 Stopping existing containers..."
 docker-compose down

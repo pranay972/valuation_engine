@@ -126,6 +126,33 @@ sudo yum clean all
 sudo journalctl --vacuum-time=1d
 ```
 
+### API Connection Issues (Common Production Problem)
+If you see errors like "requested insecure content from http://localhost:8001/api":
+
+```bash
+# 1. Check your .env file
+cat .env | grep REACT_APP_API_URL
+
+# 2. Verify the URL is correct (should NOT be localhost)
+# Should be: https://yourdomain.com/api
+# NOT: http://localhost:8001/api
+
+# 3. Rebuild and restart containers
+docker-compose down
+docker-compose up -d --build
+
+# 4. Check container environment variables
+docker-compose exec frontend env | grep REACT_APP_API_URL
+
+# 5. Verify frontend is using correct API URL
+docker-compose logs frontend | grep "API_URL\|localhost"
+```
+
+**Common Fix**: Update your `.env` file with the correct production domain:
+```bash
+REACT_APP_API_URL=https://yourdomain.com/api
+```
+
 ### Restart Everything
 ```bash
 sudo systemctl restart docker
@@ -142,20 +169,38 @@ docker-compose down && docker-compose up -d
 
 ## 📊 Environment Variables
 
-Customize deployment in `docker-compose.yml`:
-```yaml
-environment:
-  - FLASK_ENV=production
-  - REACT_APP_API_URL=http://your-domain.com/api
-  - SECRET_KEY=your-production-secret-key
-  - DATABASE_URL=your-production-database-url
-  - REDIS_URL=redis://redis:6379/0
+### Production Environment Setup
+For production deployments, create a `.env` file in your deployment directory:
+
+```bash
+# Copy the production template
+cp deploy/production.env .env
+
+# Edit the file with your production values
+nano .env
+```
+
+### Required Environment Variables
+```bash
+# Flask Configuration
+FLASK_ENV=production
+SECRET_KEY=your-production-secret-key-change-this-immediately
+
+# Frontend Configuration (CRITICAL for production)
+REACT_APP_API_URL=https://your-domain.com/api
+
+# Database Configuration
+DATABASE_URL=sqlite:///financial_valuation.db
+
+# Redis Configuration
+REDIS_URL=redis://redis:6379/0
 ```
 
 ### Production Configuration
 For production deployments, ensure:
 - `FLASK_ENV=production` is set
-- Strong `SECRET_KEY` is configured
+- Strong `SECRET_KEY` is configured (change from default)
+- `REACT_APP_API_URL` points to your production domain (not localhost!)
 - Production database credentials are used
 - Redis is properly secured
 - Health checks are enabled

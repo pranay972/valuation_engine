@@ -162,6 +162,17 @@ if [ ! -f "backend/run.py" ]; then
     exit 1
 fi
 
+# Set environment variables for production deployment
+echo "⚙️  Setting production environment variables..."
+export FLASK_ENV=production
+export SECRET_KEY=${SECRET_KEY:-production-secret-key-change-me}
+export DATABASE_URL=${DATABASE_URL:-sqlite:///financial_valuation.db}
+export DEV_DATABASE_URL=${DEV_DATABASE_URL:-sqlite:///financial_valuation.db}
+export TEST_DATABASE_URL=${TEST_DATABASE_URL:-sqlite:///financial_valuation.db}
+
+# Set frontend API URL for production (replace with your actual domain)
+export REACT_APP_API_URL=${REACT_APP_URL:-https://$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)/api}
+
 # Pull latest changes
 git pull origin main
 
