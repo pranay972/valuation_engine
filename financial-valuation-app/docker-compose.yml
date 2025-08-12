@@ -10,10 +10,10 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - FLASK_ENV=development
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     depends_on:
       redis:
         condition: service_started
@@ -41,10 +41,10 @@ services:
     depends_on:
       - redis
     environment:
-      - FLASK_ENV=development
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "celery", "-A", "app.services.celery_service.celery", "inspect", "ping"]
@@ -65,10 +65,10 @@ services:
     depends_on:
       - redis
     environment:
-      - FLASK_ENV=development
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     restart: unless-stopped
 
   # Celery Flower (for monitoring and debugging)
@@ -85,10 +85,10 @@ services:
     depends_on:
       - redis
     environment:
-      - FLASK_ENV=development
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
     restart: unless-stopped
 
   # React Frontend
@@ -105,7 +105,7 @@ services:
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://localhost:8001/api
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8001/api}
 
 volumes:
   redis_data: 
