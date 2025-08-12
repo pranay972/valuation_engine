@@ -134,21 +134,6 @@ echo "🚀 Starting containers with resource optimization..."
 # Start containers with resource constraints
 docker-compose up -d
 
-# Set resource limits for running containers
-echo "⚙️  Setting resource limits for containers..."
-
-# Backend container limits
-docker update --memory=512m --memory-swap=1g --cpus=0.5 financial_valuation_backend 2>/dev/null || true
-
-# Frontend container limits  
-docker update --memory=256m --memory-swap=512m --cpus=0.3 financial_valuation_frontend 2>/dev/null || true
-
-# Celery worker limits
-docker update --memory=256m --memory-swap=512m --cpus=0.3 financial_valuation_celery 2>/dev/null || true
-
-# Redis container limits
-docker update --memory=128m --memory-swap=256m --cpus=0.2 financial_valuation_redis 2>/dev/null || true
-
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
 sleep 15
