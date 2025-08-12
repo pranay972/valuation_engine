@@ -452,9 +452,9 @@ function Results() {
   const renderMonteCarloResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.monte_carlo_simulation) return null;
+    if (!resultsData || !resultsData.monte_carlo) return null;
 
-    const mc = resultsData.monte_carlo_simulation;
+    const mc = resultsData.monte_carlo;
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>
