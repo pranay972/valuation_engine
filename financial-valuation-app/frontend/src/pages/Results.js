@@ -408,19 +408,23 @@ function Results() {
     if (!resultsData || !resultsData.sensitivity_analysis) return null;
 
     const sens = resultsData.sensitivity_analysis;
+    const sensitivityResults = sens.sensitivity_results;
+
+    if (!sensitivityResults) return null;
+
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #fd7e14' }}>
         <h2 style={{ borderBottom: '2px solid #fd7e14', paddingBottom: '10px', marginBottom: '20px' }}>
           📉 Sensitivity Analysis
         </h2>
 
-        {Object.entries(sens).map(([parameter, data]) => (
+        {Object.entries(sensitivityResults).map(([parameter, data]) => (
           <div key={parameter} className="card" style={{ marginBottom: '20px' }}>
-            <h3 style={{ textTransform: 'capitalize' }}>{parameter.replace('_', ' ')}</h3>
+            <h3 style={{ textTransform: 'capitalize' }}>{parameter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h3>
             <div className="grid">
               <div className="card">
                 <h4>Enterprise Value</h4>
-                {Object.entries(data.ev).map(([value, ev]) => (
+                {Object.entries(data.ev || {}).map(([value, ev]) => (
                   <p key={value} style={{ margin: '2px 0' }}>
                     {value}: {formatCurrency(ev)}
                   </p>
@@ -428,7 +432,7 @@ function Results() {
               </div>
               <div className="card">
                 <h4>Price per Share</h4>
-                {Object.entries(data.price_per_share).map(([value, price]) => (
+                {Object.entries(data.price_per_share || {}).map(([value, price]) => (
                   <p key={value} style={{ margin: '2px 0' }}>
                     {value}: ${price}
                   </p>
@@ -439,7 +443,7 @@ function Results() {
         ))}
         <div style={{ marginTop: '30px' }}>
           <h3>Enterprise Value Sensitivity (Chart)</h3>
-          <SensitivityChart data={sens} />
+          <SensitivityChart data={sensitivityResults} />
         </div>
       </div>
     );

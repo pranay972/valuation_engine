@@ -68,7 +68,8 @@ def perform_sensitivity_analysis(params: ValuationParameters) -> pd.DataFrame:
                 data[f"{param_name}_price_per_share"][i] = price_per_share if price_per_share else float('nan')
                 
             except Exception as e:
-                data[param_name][i] = float('nan')
+                data[f"{param_name}_ev"][i] = float('nan')
+                data[f"{param_name}_price_per_share"][i] = float('nan')
     
     # Convert to DataFrame
     return pd.DataFrame(data) 

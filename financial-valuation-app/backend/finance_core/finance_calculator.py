@@ -168,7 +168,23 @@ class FinancialValuationEngine:
                 params.scenario_definitions = inputs.scenarios
             
             if inputs.sensitivity_analysis:
-                params.sensitivity_parameter_ranges = inputs.sensitivity_analysis
+                # Convert sensitivity analysis ranges from min/max/steps to actual value lists
+                sensitivity_ranges = {}
+                for param_name, range_spec in inputs.sensitivity_analysis.items():
+                    if isinstance(range_spec, dict) and 'min' in range_spec and 'max' in range_spec and 'steps' in range_spec:
+                        min_val = float(range_spec['min'])
+                        max_val = float(range_spec['max'])
+                        steps = int(range_spec['steps'])
+                        if steps > 1:
+                            step_size = (max_val - min_val) / (steps - 1)
+                            values = [min_val + i * step_size for i in range(steps)]
+                        else:
+                            values = [min_val]
+                        sensitivity_ranges[param_name] = values
+                    else:
+                        # If already a list, use as-is
+                        sensitivity_ranges[param_name] = range_spec
+                params.sensitivity_parameter_ranges = sensitivity_ranges
             
             if inputs.monte_carlo_specs:
                 params.monte_carlo_variable_specs = inputs.monte_carlo_specs
@@ -616,9 +632,9 @@ class FinancialValuationEngine:
                     
                     for i, value in enumerate(sensitivity_df[col]):
                         if not pd.isna(value):
-                            # Get the corresponding range value
-                            if param_name in inputs.sensitivity_analysis:
-                                range_values = inputs.sensitivity_analysis[param_name]
+                            # Get the corresponding range value from the converted params
+                            if param_name in params.sensitivity_parameter_ranges:
+                                range_values = params.sensitivity_parameter_ranges[param_name]
                                 if i < len(range_values):
                                     sensitivity[param_name]["ev"][str(range_values[i])] = round(value, 1)
                 
@@ -629,9 +645,9 @@ class FinancialValuationEngine:
                     
                     for i, value in enumerate(sensitivity_df[col]):
                         if not pd.isna(value):
-                            # Get the corresponding range value
-                            if param_name in inputs.sensitivity_analysis:
-                                range_values = inputs.sensitivity_analysis[param_name]
+                            # Get the corresponding range value from the converted params
+                            if param_name in params.sensitivity_parameter_ranges:
+                                range_values = params.sensitivity_parameter_ranges[param_name]
                                 if i < len(range_values):
                                     sensitivity[param_name]["price_per_share"][str(range_values[i])] = round(value, 2)
             
