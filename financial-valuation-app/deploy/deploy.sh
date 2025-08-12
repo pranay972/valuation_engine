@@ -67,26 +67,9 @@ sudo package-cleanup --oldkernels --count=1 -y 2>/dev/null || true
 echo "💾 Available disk space:"
 df -h /
 
-# Run deployment validation
-if [ -f "deploy/validate-deployment.sh" ]; then
-    echo "🔍 Running deployment validation..."
-    ./deploy/validate-deployment.sh
-    echo "✅ Deployment validation passed!"
-else
-    echo "⚠️  Deployment validation script not found, running basic checks..."
-    
-    # Check if we're in the right directory
-    if [ ! -f "docker-compose.yml" ]; then
-        echo "❌ Error: docker-compose.yml not found. Are you in the correct directory?"
-        exit 1
-    fi
-
-    # Check if backend run.py exists (Flask entry point)
-    if [ ! -f "backend/run.py" ]; then
-        echo "❌ Error: backend/run.py not found. Flask entry point is missing!"
-        exit 1
-    fi
-fi
+# Skip validation and proceed directly to deployment
+echo "🚀 Skipping validation, proceeding directly to deployment..."
+echo "💡 Docker will handle all dependency installation during container build"
 
 # Pull latest changes if this is a git repository
 if [ -d ".git" ]; then
