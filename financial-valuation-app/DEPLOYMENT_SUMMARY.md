@@ -1,13 +1,13 @@
-# 🚀 AWS EC2 Deployment Summary
+# AWS EC2 Deployment Summary
 
-## Port Configuration
+## 🌐 Port Configuration
 - **Frontend**: Port 3001 (React)
 - **Backend**: Port 8001 (Flask API)
 - **Nginx**: Port 80 (Reverse proxy)
 
-## Quick Deployment Steps
+## 🚀 Quick Deployment
 
-### 1. On your EC2 instance, run:
+### 1. Server Setup
 ```bash
 # Setup the server (run once)
 chmod +x deploy/ec2-setup.sh
@@ -18,24 +18,24 @@ chmod +x deploy/deploy.sh
 ./deploy/deploy.sh
 ```
 
-### 2. Access URLs:
+### 2. Access URLs
 - **Frontend**: `http://your-ec2-ip`
 - **Backend API**: `http://your-ec2-ip/api`
 - **Swagger UI**: `http://your-ec2-ip/api/docs`
 - **Health Check**: `http://your-ec2-ip/health`
 
-### 3. Direct Port Access (if needed):
+### 3. Direct Port Access (if needed)
 - **Frontend**: `http://your-ec2-ip:3001`
 - **Backend**: `http://your-ec2-ip:8001`
 
-## Security Group Requirements
+## 🔒 Security Group Requirements
 Make sure your EC2 security group allows:
 - Port 22 (SSH)
 - Port 80 (HTTP)
 - Port 3001 (Frontend)
 - Port 8001 (Backend)
 
-## Management Commands
+## 🔧 Management Commands
 ```bash
 # View logs
 docker-compose logs -f
@@ -50,7 +50,7 @@ docker-compose down
 ./deploy/deploy.sh
 ```
 
-## Troubleshooting
+## 🆘 Troubleshooting
 ```bash
 # Check if containers are running
 docker-compose ps

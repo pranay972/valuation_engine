@@ -5,21 +5,21 @@
     "share_count": 45.2
   },
   "dcf_valuation": {
-    "wacc": 0.08602499999999999,
+    "wacc": 0.095,
     "terminal_growth": 0.025,
-    "enterprise_value": 1453.5,
-    "equity_value": 1353.5,
-    "price_per_share": 29.95,
+    "enterprise_value": 2237.2,
+    "equity_value": 2137.2,
+    "price_per_share": 47.28,
     "free_cash_flows_after_tax_fcff": [
-      73.8,
-      81.0,
-      89.3,
-      98.1,
-      108.0
+      131.2,
+      144.3,
+      158.9,
+      174.7,
+      192.2
     ],
-    "terminal_value": 1813.4,
-    "present_value_of_terminal": 1105.2,
-    "present_value_of_fcfs": 348.3,
+    "terminal_value": 2813.8,
+    "present_value_of_terminal": 1632.3,
+    "present_value_of_fcfs": 604.8,
     "net_debt_breakdown": {
       "current_debt": 150.0,
       "cash_balance": 50.0,
@@ -27,29 +27,29 @@
     },
     "wacc_components": {
       "target_debt_ratio": 0.3,
-      "cost_of_equity": 0.102,
+      "cost_of_equity": 0.14,
       "cost_of_debt": 0.065,
       "tax_rate": 0.25
     }
   },
   "apv_valuation": {
-    "unlevered_cost_of_equity": 0.11,
+    "unlevered_cost_of_equity": 0.0947191011235955,
     "cost_of_debt": 0.065,
     "tax_rate": 0.25,
-    "enterprise_value": 1029.6,
+    "enterprise_value": 2249.0,
     "apv_components": {
-      "value_unlevered": 1022.2,
-      "pv_tax_shield": 7.4
+      "value_unlevered": 2246.8,
+      "pv_tax_shield": 2.2
     },
     "unlevered_fcfs_used": [
-      73.75,
-      81.02499999999999,
-      89.28750000000005,
-      98.11300000000006,
-      107.96350000000002
+      131.25,
+      144.325,
+      158.88750000000002,
+      174.71300000000002,
+      192.16349999999997
     ],
-    "equity_value": 929.6,
-    "price_per_share": 20.57,
+    "equity_value": 2149.0,
+    "price_per_share": 47.54,
     "net_debt_breakdown": {
       "current_debt": 150.0,
       "cash_balance": 50.0,
@@ -58,109 +58,65 @@
   },
   "comparable_valuation": {
     "ev_multiples": {
-      "mean_ev": 4748.5,
-      "median_ev": 5426.7,
-      "std_dev": 2252.4,
+      "mean_ev": 5980.5,
+      "median_ev": 5673.3,
+      "std_dev": 909.7,
       "range": [
-        973.8,
+        4570.7,
         7737.5
       ]
     },
     "base_metrics_used": {
       "ebitda": 512.4,
-      "fcf": 64.1,
+      "fcf": 192.2,
       "revenue": 1830.1,
       "net_income": 247.1
     },
     "implied_evs_by_multiple": {
       "EV/EBITDA": {
-        "mean_implied_ev": 7045.7,
-        "median_implied_ev": 6994.5,
+        "mean_implied_ev": 7122.6,
+        "median_implied_ev": 7122.6,
         "our_metric": 512.4,
-        "mean_multiple": 13.75,
-        "peer_count": 8
-      },
-      "P/E": {
-        "mean_implied_ev": 5162.9,
-        "median_implied_ev": 5132.6,
-        "our_metric": 242.7,
-        "mean_multiple": 21.27,
-        "peer_count": 8
-      },
-      "EV/FCF": {
-        "mean_implied_ev": 1089.1,
-        "median_implied_ev": 1079.5,
-        "our_metric": 64.1,
-        "mean_multiple": 17.0,
-        "peer_count": 8
+        "mean_multiple": 13.9,
+        "peer_count": 5
       },
       "EV/Revenue": {
-        "mean_implied_ev": 5696.2,
-        "median_implied_ev": 5581.8,
+        "mean_implied_ev": 5526.9,
+        "median_implied_ev": 5490.3,
         "our_metric": 1830.1,
-        "mean_multiple": 3.11,
-        "peer_count": 8
+        "mean_multiple": 3.02,
+        "peer_count": 5
+      },
+      "P/E": {
+        "mean_implied_ev": 5292.1,
+        "median_implied_ev": 5287.2,
+        "our_metric": 247.1,
+        "mean_multiple": 21.42,
+        "peer_count": 5
       }
     },
     "calculation_method": "Comparable Multiples"
   },
   "scenarios": {
     "scenarios": {
-      "base_case": {
-        "ev": 1453.5,
-        "equity": 1353.5,
-        "price_per_share": 29.95
-      },
       "optimistic": {
-        "ev": 2350.4,
-        "equity": 2250.4,
-        "price_per_share": 49.79,
+        "ev": 3934.3,
+        "equity": 3834.3,
+        "price_per_share": 84.83,
         "input_changes": {
           "ebit_margin": 0.22,
-          "terminal_growth_rate": 0.03,
+          "terminal_growth_rate": 0.035,
           "weighted_average_cost_of_capital": 0.085
         }
       },
       "pessimistic": {
-        "ev": 633.3,
-        "equity": 533.3,
-        "price_per_share": 11.8,
+        "ev": 1270.8,
+        "equity": 1170.8,
+        "price_per_share": 25.9,
         "input_changes": {
           "ebit_margin": 0.14,
           "terminal_growth_rate": 0.015,
           "weighted_average_cost_of_capital": 0.105
-        }
-      },
-      "high_growth": {
-        "ev": 2856.7,
-        "equity": 2756.7,
-        "price_per_share": 60.99,
-        "input_changes": {
-          "revenue_projections": [
-            1250.0,
-            1437.5,
-            1653.1,
-            1901.1,
-            2186.2
-          ],
-          "ebit_margin": 0.2,
-          "terminal_growth_rate": 0.035
-        }
-      },
-      "low_growth": {
-        "ev": 573.9,
-        "equity": 473.9,
-        "price_per_share": 10.48,
-        "input_changes": {
-          "revenue_projections": [
-            1250.0,
-            1312.5,
-            1378.1,
-            1447.0,
-            1519.4
-          ],
-          "ebit_margin": 0.16,
-          "terminal_growth_rate": 0.015
         }
       }
     },
@@ -168,99 +124,82 @@
   },
   "sensitivity_analysis": {
     "sensitivity_results": {
-      "wacc": {
-        "ev": {
-          "0.075": 1793.4,
-          "0.085": 1479.8,
-          "0.095": 1256.9,
-          "0.105": 1090.5,
-          "0.115": 961.8
-        },
-        "price_per_share": {
-          "0.075": 37.46,
-          "0.085": 30.53,
-          "0.095": 25.59,
-          "0.105": 21.91,
-          "0.115": 19.07
-        }
-      },
       "ebit_margin": {
         "ev": {
-          "0.14": 714.3,
-          "0.16": 1083.9,
-          "0.18": 1453.5,
-          "0.2": 1823.1,
-          "0.22": 2192.7
+          "0.15": 1757.8,
+          "0.16": 1917.6,
+          "0.17": 2077.4,
+          "0.18": 2237.2,
+          "0.19": 2397.0,
+          "0.2": 2556.8,
+          "0.21": 2716.6
         },
         "price_per_share": {
-          "0.14": 13.59,
-          "0.16": 21.77,
-          "0.18": 29.95,
-          "0.2": 38.12,
-          "0.22": 46.3
+          "0.15": 36.68,
+          "0.16": 40.21,
+          "0.17": 43.75,
+          "0.18": 47.28,
+          "0.19": 50.82,
+          "0.2": 54.35,
+          "0.21": 57.89
         }
       },
-      "terminal_growth": {
+      "terminal_growth_rate": {
         "ev": {
-          "0.015": 1288.7,
-          "0.02": 1364.9,
-          "0.025": 1453.5,
-          "0.03": 1558.0,
-          "0.035": 1683.0
+          "0.02": 2120.9,
+          "0.0225": 2177.1,
+          "0.025": 2237.2,
+          "0.0275": 2301.8,
+          "0.03": 2371.3
         },
         "price_per_share": {
-          "0.015": 26.3,
-          "0.02": 27.98,
-          "0.025": 29.95,
-          "0.03": 32.26,
-          "0.035": 35.02
+          "0.02": 44.71,
+          "0.0225": 45.95,
+          "0.025": 47.28,
+          "0.0275": 48.71,
+          "0.03": 50.25
         }
       },
-      "target_debt_ratio": {
+      "weighted_average_cost_of_capital": {
         "ev": {
-          "0.1": 1225.7,
-          "0.2": 1330.3,
-          "0.3": 1453.5,
-          "0.4": 1600.7,
-          "0.5": 1779.3
+          "0.085": 2634.0,
+          "0.09": 2420.1,
+          "0.095": 2237.2,
+          "0.1": 2079.1,
+          "0.105": 1941.0
         },
         "price_per_share": {
-          "0.1": 24.9,
-          "0.2": 27.22,
-          "0.3": 29.95,
-          "0.4": 33.2,
-          "0.5": 37.15
+          "0.085": 56.06,
+          "0.09": 51.33,
+          "0.095": 47.28,
+          "0.1": 43.78,
+          "0.105": 40.73
         }
       }
     },
     "parameter_ranges": {
-      "wacc_range": [
-        0.075,
-        0.085,
-        0.095,
-        0.105,
-        0.115
-      ],
-      "ebit_margin_range": [
-        0.14,
+      "ebit_margin": [
+        0.15,
         0.16,
+        0.17,
         0.18,
+        0.19,
         0.2,
-        0.22
+        0.21
       ],
-      "terminal_growth_range": [
-        0.015,
+      "terminal_growth_rate": [
         0.02,
+        0.0225,
         0.025,
-        0.03,
-        0.035
+        0.0275,
+        0.03
       ],
-      "target_debt_ratio_range": [
+      "weighted_average_cost_of_capital": [
+        0.085,
+        0.09,
+        0.095,
         0.1,
-        0.2,
-        0.3,
-        0.4,
-        0.5
+        0.105
       ]
     },
     "calculation_method": "Sensitivity Analysis"
@@ -268,12 +207,12 @@
   "monte_carlo_simulation": {
     "runs": 1000,
     "wacc_method": {
-      "mean_ev": 1477.8,
-      "median_ev": 1481.3,
-      "std_dev": 403.2,
+      "mean_ev": 2300.3,
+      "median_ev": 2247.3,
+      "std_dev": 521.6,
       "confidence_interval_95": [
-        707.9,
-        2259.8
+        1494.3,
+        3536.1
       ]
     },
     "parameter_distributions": {
@@ -284,13 +223,6 @@
           "std": 0.02
         }
       },
-      "weighted_average_cost_of_capital": {
-        "distribution": "normal",
-        "params": {
-          "mean": 0.095,
-          "std": 0.01
-        }
-      },
       "terminal_growth_rate": {
         "distribution": "normal",
         "params": {
@@ -298,11 +230,11 @@
           "std": 0.005
         }
       },
-      "levered_beta": {
+      "weighted_average_cost_of_capital": {
         "distribution": "normal",
         "params": {
-          "mean": 1.2,
-          "std": 0.1
+          "mean": 0.095,
+          "std": 0.01
         }
       }
     },

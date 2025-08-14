@@ -1,8 +1,8 @@
 # Finance Core - Financial Valuation Engine
 
-This module provides the core financial calculation engine for the Financial Valuation Application.
+Core financial calculation engine providing 6 professional analysis methods.
 
-## Core Components
+## 🎯 Core Components
 
 ### Main Calculator
 - **`finance_calculator.py`** - Main calculator class with all analysis methods
@@ -20,22 +20,22 @@ This module provides the core financial calculation engine for the Financial Val
 ### Support
 - **`error_messages.py`** - Error handling and validation utilities
 
-## Analysis Types
+## 📊 Analysis Types
 
-1. **DCF Valuation (WACC)** - Standard discounted cash flow using weighted average cost of capital
-2. **APV Valuation** - Adjusted Present Value method separating unlevered value from financing effects
+1. **DCF (WACC)** - Standard discounted cash flow using weighted average cost of capital
+2. **APV** - Adjusted Present Value method separating unlevered value from financing effects
 3. **Comparable Multiples** - Relative valuation using peer company ratios
 4. **Scenario Analysis** - Multiple scenarios with different parameter combinations
 5. **Sensitivity Analysis** - Parameter impact analysis on key valuation drivers
-6. **Monte Carlo Simulation** - Risk analysis with probability distributions
+6. **Monte Carlo** - Risk analysis with probability distributions
 
-## Usage
+## 🔗 Integration
 
 The finance core is integrated into the Flask backend through the `FinanceCoreService` class in `backend/app/services/finance_core_service.py`.
 
-## Dependencies
+## 📋 Dependencies
 
-- numpy
-- pandas
+- **numpy** - Numerical computations
+- **pandas** - Data manipulation
 
-These dependencies are managed by the main backend `pyproject.toml` file. 
+Dependencies are managed by the main backend `pyproject.toml` file. 

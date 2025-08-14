@@ -33,7 +33,13 @@ def calculate_net_debt_for_valuation(valuation_parameters: ValuationParameters) 
     Returns:
         float: Net debt value (USD)
     """
-    current_debt = valuation_parameters.debt_schedule.get(0, 0.0)
+    # Use debt schedule configuration
+    if valuation_parameters.use_debt_schedule:
+        # Use detailed debt schedule
+        current_debt = valuation_parameters.debt_schedule.get(0, 0.0)
+    else:
+        # Use simple net debt approach
+        current_debt = valuation_parameters.debt_schedule.get(0, 0.0)
     net_debt = current_debt - valuation_parameters.cash_and_equivalents
     return net_debt
 
@@ -141,17 +147,18 @@ def calculate_dcf_valuation_wacc(valuation_parameters: ValuationParameters) -> T
             valuation_parameters.capital_expenditure,
             valuation_parameters.depreciation_expense,
             valuation_parameters.net_working_capital_changes,
-            valuation_parameters.corporate_tax_rate,
-            valuation_parameters.amortization_expense,
-            valuation_parameters.other_non_cash_items,
-            valuation_parameters.other_working_capital_items
+            valuation_parameters.corporate_tax_rate
         )
     
     if not free_cash_flow_series:
         raise ValueError("No free cash flow series available for valuation")
     
     # Step 2: Calculate WACC using target capital structure or iterative approach
-    weighted_average_cost_of_capital = calculate_iterative_wacc(valuation_parameters)
+    # Step 2: Calculate WACC using configuration
+    if valuation_parameters.use_input_wacc:
+        weighted_average_cost_of_capital = valuation_parameters.weighted_average_cost_of_capital
+    else:
+        weighted_average_cost_of_capital = calculate_iterative_wacc(valuation_parameters)
     
     # Step 3: Discount each FCF to present value
     if valuation_parameters.use_mid_year_convention:
@@ -240,18 +247,19 @@ def calculate_present_value_of_tax_shields(
     """
     present_value_of_tax_shields = 0.0
     
-    for year, debt_level in debt_schedule.items():
-        if debt_level > 0:
-            interest_expense = debt_level * cost_of_debt
-            tax_shield = interest_expense * corporate_tax_rate
-            
-            # Discount at unlevered cost of equity (not cost of debt)
-            if use_mid_year_convention:
-                discount_factor = (1 + unlevered_cost_of_equity) ** (year + 0.5)
-            else:
-                discount_factor = (1 + unlevered_cost_of_equity) ** (year + 1)
-            
-            present_value_of_tax_shields += tax_shield / discount_factor
+    if debt_schedule:
+        for year, debt_level in debt_schedule.items():
+            if debt_level > 0:
+                interest_expense = debt_level * cost_of_debt
+                tax_shield = interest_expense * corporate_tax_rate
+                
+                # Discount at unlevered cost of equity (not cost of debt)
+                if use_mid_year_convention:
+                    discount_factor = (1 + unlevered_cost_of_equity) ** (year + 0.5)
+                else:
+                    discount_factor = (1 + unlevered_cost_of_equity) ** (year + 1)
+                
+                present_value_of_tax_shields += tax_shield / discount_factor
     
     return present_value_of_tax_shields
 
@@ -312,10 +320,7 @@ def calculate_adjusted_present_value(valuation_parameters: ValuationParameters) 
             valuation_parameters.capital_expenditure,
             valuation_parameters.depreciation_expense,
             valuation_parameters.net_working_capital_changes,
-            valuation_parameters.corporate_tax_rate,
-            valuation_parameters.amortization_expense,
-            valuation_parameters.other_non_cash_items,
-            valuation_parameters.other_working_capital_items
+            valuation_parameters.corporate_tax_rate
         )
     
     if not unlevered_fcf_series:
@@ -365,6 +370,10 @@ def calculate_adjusted_present_value(valuation_parameters: ValuationParameters) 
         unlevered_cost_of_equity,
         valuation_parameters.use_mid_year_convention
     )
+    
+    # Handle case where tax shields calculation returns None
+    if present_value_of_tax_shields is None:
+        present_value_of_tax_shields = 0.0
     
     # Step 7: Calculate total enterprise value
     enterprise_value = unlevered_enterprise_value + present_value_of_tax_shields

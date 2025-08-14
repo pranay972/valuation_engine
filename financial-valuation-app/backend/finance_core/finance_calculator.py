@@ -347,11 +347,13 @@ class CleanModularFinanceCalculator:
             net_debt = params.debt_schedule.get(0, 0.0) - params.cash_and_equivalents
             current_debt = params.debt_schedule.get(0, 0.0)
             
-            # Get WACC details
-            wacc_used = params.weighted_average_cost_of_capital
-            if hasattr(params, 'target_debt_to_value_ratio') and params.target_debt_to_value_ratio > 0:
-                cost_of_equity = params.calculate_levered_cost_of_equity()
-                wacc_used = (1 - params.target_debt_to_value_ratio) * cost_of_equity + params.target_debt_to_value_ratio * params.cost_of_debt * (1 - params.corporate_tax_rate)
+            # Get WACC details - use the same WACC that was used in the DCF calculation
+            if params.use_input_wacc:
+                wacc_used = params.weighted_average_cost_of_capital
+            else:
+                # If not using input WACC, calculate the iterative WACC that was actually used
+                from wacc import calculate_iterative_wacc
+                wacc_used = calculate_iterative_wacc(params)
             
             return {
                 "wacc": wacc_used,
