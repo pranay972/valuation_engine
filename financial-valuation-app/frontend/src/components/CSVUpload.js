@@ -2,8 +2,12 @@ import { Download, Upload } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+// Get API base URL from environment or use default
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+
 export function CSVUpload({ onDataLoaded }) {
   const [loading, setLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -12,7 +16,7 @@ export function CSVUpload({ onDataLoaded }) {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/csv/upload', {
+    fetch(`${API_BASE_URL}/valuation/csv/upload`, {
       method: 'POST',
       body: formData
     })
@@ -20,10 +24,16 @@ export function CSVUpload({ onDataLoaded }) {
       .then(data => {
         if (data.success) {
           onDataLoaded(data.data);
+          setUploadStatus('✅ CSV uploaded successfully! Form fields have been updated.');
+          // Clear status after 5 seconds
+          setTimeout(() => setUploadStatus(''), 5000);
+        } else {
+          setUploadStatus('❌ Error: ' + (data.error || 'Upload failed'));
         }
       })
       .catch(error => {
         console.error('Error uploading CSV:', error);
+        setUploadStatus('❌ Error: ' + error.message);
       })
       .finally(() => {
         setLoading(false);
@@ -38,7 +48,14 @@ export function CSVUpload({ onDataLoaded }) {
   });
 
   const downloadSample = () => {
-    window.open('/api/csv/sample', '_blank');
+    // Create a temporary link element to trigger download
+    const link = document.createElement('a');
+    link.href = `${API_BASE_URL}/valuation/csv/sample`;
+    link.download = 'sample_input.csv';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -53,6 +70,16 @@ export function CSVUpload({ onDataLoaded }) {
           Download Sample CSV
         </button>
       </div>
+
+      {/* Upload Status Message */}
+      {uploadStatus && (
+        <div className={`p-3 rounded-lg text-sm ${uploadStatus.includes('✅')
+          ? 'bg-green-100 text-green-800 border border-green-200'
+          : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+          {uploadStatus}
+        </div>
+      )}
       <div
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'

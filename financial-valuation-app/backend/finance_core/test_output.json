@@ -1,0 +1,139 @@
+{
+  "company_name": "TechCorp Inc.",
+  "valuation_date": "2024-01-01",
+  "forecast_years": 5,
+  "financial_inputs": {
+    "revenue": [
+      1250.0,
+      1375.0,
+      1512.5,
+      1663.8,
+      1830.1
+    ],
+    "ebit_margin": 0.18,
+    "tax_rate": 0.25,
+    "capex": [
+      187.5,
+      206.3,
+      226.9,
+      249.6,
+      274.5
+    ],
+    "depreciation": [
+      125.0,
+      137.5,
+      151.3,
+      166.4,
+      183.0
+    ],
+    "nwc_changes": [
+      -25.0,
+      -27.5,
+      -30.3,
+      -33.3,
+      -36.6
+    ],
+    "weighted_average_cost_of_capital": 0.095,
+    "terminal_growth_rate": 0.025,
+    "share_count": 45.2,
+    "cost_of_debt": 0.065,
+    "cash_balance": 50.0,
+    "cost_of_capital": {
+      "risk_free_rate": 0.03,
+      "market_risk_premium": 0.06,
+      "levered_beta": 1.2,
+      "unlevered_beta": 1.2,
+      "target_debt_to_value_ratio": 0.3,
+      "unlevered_cost_of_equity": 0.0,
+      "cost_of_equity": 0.14
+    },
+    "use_input_wacc": true,
+    "use_debt_schedule": false,
+    "debt_schedule": {
+      "0": 150.0
+    }
+  },
+  "comparable_multiples": {
+    "EV/EBITDA": [
+      12.5,
+      14.2,
+      13.8,
+      15.1,
+      13.9
+    ],
+    "EV/Revenue": [
+      2.8,
+      3.1,
+      2.9,
+      3.3,
+      3.0
+    ],
+    "P/E": [
+      18.5,
+      22.1,
+      20.8,
+      24.3,
+      21.4
+    ]
+  },
+  "scenarios": {
+    "optimistic": {
+      "ebit_margin": 0.22,
+      "terminal_growth_rate": 0.035,
+      "weighted_average_cost_of_capital": 0.085
+    },
+    "pessimistic": {
+      "ebit_margin": 0.14,
+      "terminal_growth_rate": 0.015,
+      "weighted_average_cost_of_capital": 0.105
+    }
+  },
+  "monte_carlo_specs": {
+    "ebit_margin": {
+      "distribution": "normal",
+      "params": {
+        "mean": 0.18,
+        "std": 0.02
+      }
+    },
+    "terminal_growth_rate": {
+      "distribution": "normal",
+      "params": {
+        "mean": 0.025,
+        "std": 0.005
+      }
+    },
+    "weighted_average_cost_of_capital": {
+      "distribution": "normal",
+      "params": {
+        "mean": 0.095,
+        "std": 0.01
+      }
+    }
+  },
+  "sensitivity_analysis": {
+    "ebit_margin": [
+      0.15,
+      0.16,
+      0.17,
+      0.18,
+      0.19,
+      0.2,
+      0.21
+    ],
+    "terminal_growth_rate": [
+      0.02,
+      0.0225,
+      0.025,
+      0.0275,
+      0.03
+    ],
+    "weighted_average_cost_of_capital": [
+      0.085,
+      0.09,
+      0.095,
+      0.1,
+      0.105
+    ]
+  }
+}

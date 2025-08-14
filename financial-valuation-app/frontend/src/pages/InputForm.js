@@ -124,9 +124,91 @@ function InputForm() {
 
   // Add this handler to update formData from CSV
   const handleCSVData = (csvData) => {
+    console.log('CSV data received:', csvData);
+
+    // Transform CSV data to match form field names
+    const transformedData = {
+      // Company Information
+      company_name: csvData.company_name || '',
+      valuation_date: csvData.valuation_date || new Date().toISOString().split('T')[0],
+      forecast_years: csvData.forecast_years || 5,
+
+      // Core Financial Inputs - extract from financial_inputs
+      revenue: csvData.financial_inputs?.revenue || [1000, 1100, 1200, 1300, 1400],
+      ebit_margin: csvData.financial_inputs?.ebit_margin || 0.18,
+      tax_rate: csvData.financial_inputs?.tax_rate || 0.25,
+      capex: csvData.financial_inputs?.capex || [150, 165, 180, 195, 210],
+      depreciation: csvData.financial_inputs?.depreciation || [100, 110, 120, 130, 140],
+      nwc_changes: csvData.financial_inputs?.nwc_changes || [50, 55, 60, 65, 70],
+      amortization: csvData.financial_inputs?.amortization || [25, 27.5, 30, 32.5, 35],
+      other_non_cash: csvData.financial_inputs?.other_non_cash || [10, 11, 12, 13, 14],
+      other_working_capital: csvData.financial_inputs?.other_working_capital || [5, 5.5, 6, 6.5, 7],
+      weighted_average_cost_of_capital: csvData.financial_inputs?.weighted_average_cost_of_capital || 0.095,
+      terminal_growth_rate: csvData.financial_inputs?.terminal_growth_rate || 0.025,
+      share_count: csvData.financial_inputs?.share_count || 45.2,
+      cost_of_debt: csvData.financial_inputs?.cost_of_debt || 0.065,
+      cash_balance: csvData.financial_inputs?.cash_balance || 50.0,
+
+      // Cost of Capital - extract from financial_inputs.cost_of_capital
+      risk_free_rate: csvData.financial_inputs?.cost_of_capital?.risk_free_rate || 0.03,
+      market_risk_premium: csvData.financial_inputs?.cost_of_capital?.market_risk_premium || 0.06,
+      levered_beta: csvData.financial_inputs?.cost_of_capital?.levered_beta || 1.2,
+      unlevered_beta: csvData.financial_inputs?.cost_of_capital?.unlevered_beta || 1.0,
+      target_debt_to_value_ratio: csvData.financial_inputs?.cost_of_capital?.target_debt_to_value_ratio || 0.3,
+      unlevered_cost_of_equity: csvData.financial_inputs?.cost_of_capital?.unlevered_cost_of_equity || 0.11,
+
+      // Debt Schedule
+      debt_schedule: csvData.financial_inputs?.debt_schedule || {
+        "0": 150.0,
+        "1": 135.0,
+        "2": 120.0,
+        "3": 105.0,
+        "4": 90.0
+      },
+
+      // Comparable Multiples - extract from comparable_multiples
+      ev_ebitda: csvData.comparable_multiples?.["EV/EBITDA"] || [12.5, 14.2, 13.8, 15.1, 12.9, 13.5, 14.8, 13.2],
+      pe_ratio: csvData.comparable_multiples?.["P/E"] || [18.5, 22.1, 20.8, 24.3, 19.7, 21.5, 23.2, 20.1],
+      ev_fcf: csvData.comparable_multiples?.["EV/FCF"] || [15.2, 17.8, 16.5, 18.9, 15.8, 17.2, 18.5, 16.1],
+      ev_revenue: csvData.comparable_multiples?.["EV/Revenue"] || [2.8, 3.2, 3.0, 3.5, 2.9, 3.1, 3.4, 3.0],
+
+      // Sensitivity Analysis - extract from sensitivity_analysis
+      wacc_range: csvData.sensitivity_analysis?.weighted_average_cost_of_capital || [0.075, 0.085, 0.095, 0.105, 0.115],
+      ebit_margin_range: csvData.sensitivity_analysis?.ebit_margin || [0.14, 0.16, 0.18, 0.20, 0.22],
+      terminal_growth_range: csvData.sensitivity_analysis?.terminal_growth_rate || [0.015, 0.020, 0.025, 0.030, 0.035],
+      target_debt_ratio_range: [0.1, 0.2, 0.3, 0.4, 0.5], // Not in CSV, keep default
+
+      // Monte Carlo Specs - extract from monte_carlo_specs
+      mc_ebit_margin_mean: csvData.monte_carlo_specs?.ebit_margin?.params?.mean || 0.18,
+      mc_ebit_margin_std: csvData.monte_carlo_specs?.ebit_margin?.params?.std || 0.02,
+      mc_wacc_mean: csvData.monte_carlo_specs?.weighted_average_cost_of_capital?.params?.mean || 0.095,
+      mc_wacc_std: csvData.monte_carlo_specs?.weighted_average_cost_of_capital?.params?.std || 0.01,
+      mc_terminal_growth_mean: csvData.monte_carlo_specs?.terminal_growth_rate?.params?.mean || 0.025,
+      mc_terminal_growth_std: csvData.monte_carlo_specs?.terminal_growth_rate?.params?.std || 0.005,
+      mc_levered_beta_mean: csvData.monte_carlo_specs?.levered_beta?.params?.mean || 1.2,
+      mc_levered_beta_std: csvData.monte_carlo_specs?.levered_beta?.params?.std || 0.1,
+
+      // Scenarios - extract from scenarios
+      scenarios: {
+        "Base Case": {},
+        "Optimistic": {
+          ebit_margin: csvData.scenarios?.optimistic?.ebit_margin || 0.22,
+          terminal_growth_rate: csvData.scenarios?.optimistic?.terminal_growth_rate || 0.035,
+          weighted_average_cost_of_capital: csvData.scenarios?.optimistic?.weighted_average_cost_of_capital || 0.085
+        },
+        "Pessimistic": {
+          ebit_margin: csvData.scenarios?.pessimistic?.ebit_margin || 0.14,
+          terminal_growth_rate: csvData.scenarios?.pessimistic?.terminal_growth_rate || 0.015,
+          weighted_average_cost_of_capital: csvData.scenarios?.pessimistic?.weighted_average_cost_of_capital || 0.115
+        }
+      }
+    };
+
+    console.log('Transformed data:', transformedData);
+
     setFormData(prev => ({
       ...prev,
-      ...csvData
+      ...transformedData
     }));
   };
 
