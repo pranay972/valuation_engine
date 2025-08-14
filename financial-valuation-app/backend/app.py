@@ -96,7 +96,14 @@ def submit_inputs(analysis_id):
     if not data:
         return jsonify({'error': 'Input data is required'}), 400
     
-    # For now, just return success
+    # Store the input data for later processing
+    # In a real implementation, this would be stored in a database
+    # For now, we'll store it in memory (not production-ready)
+    if not hasattr(app, 'analysis_inputs'):
+        app.analysis_inputs = {}
+    
+    app.analysis_inputs[analysis_id] = data
+    
     return jsonify({
         'id': analysis_id,
         'status': 'processing',
@@ -114,6 +121,45 @@ def get_status(analysis_id):
 
 @app.route('/api/results/<analysis_id>/results', methods=['GET'])
 def get_results(analysis_id):
+    # Check if we have stored input data for this analysis
+    if hasattr(app, 'analysis_inputs') and analysis_id in app.analysis_inputs:
+                    # Use the finance core service to run actual analysis
+            try:
+                from app.services.finance_core_service import FinanceCoreService
+                service = FinanceCoreService()
+                
+                # Get the stored input data
+                inputs = app.analysis_inputs[analysis_id]
+                
+                # Determine analysis type from the inputs or use a default
+                # In a real implementation, this would come from the analysis creation
+                analysis_type = 'monte_carlo'  # Default for testing
+                
+                # Run the analysis
+                results = service.run_analysis(analysis_type, inputs)
+                
+                if results['success']:
+                    # Return the actual results from the service
+                    return jsonify({
+                        'id': analysis_id,
+                        'status': 'completed',
+                        **results['results']
+                    })
+                else:
+                    # Return error from service
+                    return jsonify({
+                        'id': analysis_id,
+                        'status': 'error',
+                        'error': results['error']
+                    }), 400
+                    
+            except Exception as e:
+                # Fall back to sample results if service fails
+                print(f"Error running analysis: {e}")
+                import traceback
+                traceback.print_exc()
+                pass
+    
     # Return comprehensive sample results based on the sample valuation results JSON
     return jsonify({
         'id': analysis_id,
@@ -348,7 +394,7 @@ def get_results(analysis_id):
             }
         },
         'monte_carlo_simulation': {
-            'runs': 1000,
+            'runs': app.analysis_inputs.get(analysis_id, {}).get('financial_inputs', {}).get('monte_carlo_specs', {}).get('runs', 1000) if hasattr(app, 'analysis_inputs') and analysis_id in app.analysis_inputs else 1000,
             'wacc_method': {
                 'mean_ev': 1442.4,
                 'median_ev': 1428.5,

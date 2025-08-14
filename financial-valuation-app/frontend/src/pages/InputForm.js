@@ -20,9 +20,10 @@ function InputForm() {
     capex: [150, 165, 180, 195, 210],
     depreciation: [100, 110, 120, 130, 140],
     nwc_changes: [50, 55, 60, 65, 70],
-    amortization: [25, 27.5, 30, 32.5, 35],
-    other_non_cash: [10, 11, 12, 13, 14],
-    other_working_capital: [5, 5.5, 6, 6.5, 7],
+    // Fix: Set optional fields to zero arrays by default
+    amortization: [0, 0, 0, 0, 0],
+    other_non_cash: [0, 0, 0, 0, 0],
+    other_working_capital: [0, 0, 0, 0, 0],
     weighted_average_cost_of_capital: 0.095,
     terminal_growth_rate: 0.025,
     share_count: 45.2,
@@ -59,6 +60,7 @@ function InputForm() {
     target_debt_ratio_range: [0.1, 0.2, 0.3, 0.4, 0.5],
     
     // Monte Carlo Specs
+    mc_runs: 1000, // FIXED: Add Monte Carlo runs field
     mc_ebit_margin_mean: 0.18,
     mc_ebit_margin_std: 0.02,
     mc_wacc_mean: 0.095,
@@ -102,6 +104,27 @@ function InputForm() {
     setFormData(prev => ({
       ...prev,
       [fieldName]: prev[fieldName].map((item, i) => i === index ? parseFloat(value) || 0 : item)
+    }));
+  };
+
+  // Add a helper function to create zero arrays
+  const createZeroArray = (length) => Array(length).fill(0);
+
+  // Update forecast_years handler to also update optional arrays
+  const handleForecastYearsChange = (e) => {
+    const years = parseInt(e.target.value);
+    setFormData(prev => ({
+      ...prev,
+      forecast_years: years,
+      // Update all array fields to match new length
+      revenue: prev.revenue.slice(0, years) || createZeroArray(years),
+      capex: prev.capex.slice(0, years) || createZeroArray(years),
+      depreciation: prev.depreciation.slice(0, years) || createZeroArray(years),
+      nwc_changes: prev.nwc_changes.slice(0, years) || createZeroArray(years),
+      // Fix: Ensure optional arrays are also updated
+      amortization: prev.amortization.slice(0, years) || createZeroArray(years),
+      other_non_cash: prev.other_non_cash.slice(0, years) || createZeroArray(years),
+      other_working_capital: prev.other_working_capital.slice(0, years) || createZeroArray(years),
     }));
   };
 
@@ -172,6 +195,7 @@ function InputForm() {
           target_debt_ratio_range: formData.target_debt_ratio_range
         },
         monte_carlo_specs: {
+          runs: parseInt(formData.mc_runs), // FIXED: Include runs parameter
           ebit_margin: {
             distribution: "normal",
             params: { 
@@ -320,7 +344,7 @@ function InputForm() {
                 type="number"
                 name="forecast_years"
                 value={formData.forecast_years}
-                onChange={handleInputChange}
+                onChange={handleForecastYearsChange}
                 className="input"
                 min="1"
                 max="10"
@@ -456,9 +480,12 @@ function InputForm() {
         {/* Optional Items */}
         <div className="card">
           <h2>Optional Items (millions)</h2>
-          {renderArrayInput('amortization', 'Amortization')}
-          {renderArrayInput('other_non_cash', 'Other Non-Cash Items')}
-          {renderArrayInput('other_working_capital', 'Other Working Capital')}
+          <p className="text-sm text-gray-500 mb-4">
+            These fields are optional. Leave as 0 if not applicable. They will be included in Free Cash Flow calculations if provided.
+          </p>
+          {renderArrayInput('amortization', 'Amortization (optional)')}
+          {renderArrayInput('other_non_cash', 'Other Non-Cash Items (optional)')}
+          {renderArrayInput('other_working_capital', 'Other Working Capital (optional)')}
         </div>
 
         {/* Cost of Capital */}
@@ -622,6 +649,22 @@ function InputForm() {
         <div className="card">
           <h2>Monte Carlo Parameters</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            <div>
+              <label>Number of Simulation Runs *</label>
+              <input
+                type="number"
+                name="mc_runs"
+                value={formData.mc_runs}
+                onChange={handleInputChange}
+                className="input"
+                min="100"
+                max="50000"
+                step="100"
+                required
+                title="Number of Monte Carlo simulation runs (100-50,000)"
+              />
+              <small className="text-sm text-gray-500">Recommended: 1,000-10,000 runs</small>
+            </div>
             <div>
               <label>EBIT Margin Mean</label>
               <input
