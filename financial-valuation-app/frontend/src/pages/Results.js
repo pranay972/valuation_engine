@@ -41,11 +41,30 @@ function Results() {
         }
       }
 
+      // Create a mapping between analysis IDs and analysis types
+      const analysisIdToTypeMap = {};
+      if (storedSelectedTypes) {
+        try {
+          const parsed = JSON.parse(storedSelectedTypes);
+          // Create a mapping from the stored analysis types
+          parsed.forEach((analysis, index) => {
+            if (analysisIds[index]) {
+              analysisIdToTypeMap[analysisIds[index]] = analysis.id;
+            }
+          });
+        } catch (err) {
+          console.error('Error parsing stored analysis types:', err);
+        }
+      }
+
       // Fetch results for each analysis
       const resultsPromises = analysisIds.map(async (id) => {
         try {
           const response = await axios.get(`/api/results/${id}/results`);
-          return response.data;
+          // Add analysis_type to the result based on the mapping
+          const result = response.data;
+          result.analysis_type = analysisIdToTypeMap[id] || 'unknown';
+          return result;
         } catch (err) {
           console.error(`Error fetching results for ${id}:`, err);
           return null;
@@ -63,8 +82,10 @@ function Results() {
       console.log('Analysis IDs from URL:', analysisIds);
       console.log('Selected Analysis IDs:', selectedAnalysisIds);
       console.log('Selected Analysis Types:', selectedTypes);
+      console.log('Analysis ID to Type Mapping:', analysisIdToTypeMap);
       console.log('All Results:', validResults);
       console.log('First Result Structure:', validResults[0] ? Object.keys(validResults[0]) : 'No results');
+      console.log('Results with analysis_type:', validResults.map(r => ({ id: r.id, analysis_type: r.analysis_type })));
     } catch (err) {
       setError('Failed to load results');
       setLoading(false);
@@ -85,6 +106,9 @@ function Results() {
   };
 
   const getAnalysisName = (analysisTypeId) => {
+    if (!analysisTypeId || analysisTypeId === 'unknown') {
+      return 'Unknown Analysis Type';
+    }
     const analysis = analysisTypes.find(type => type.id === analysisTypeId);
     return analysis ? analysis.name : analysisTypeId;
   };
@@ -93,6 +117,88 @@ function Results() {
     const isSelected = selectedAnalysisTypes.includes(analysisTypeId);
     console.log(`Checking if ${analysisTypeId} was selected:`, isSelected, 'Selected Types:', selectedAnalysisTypes);
     return isSelected;
+  };
+
+  const organizeResultsByType = (results) => {
+    const organized = {};
+    
+    results.forEach(result => {
+      const analysisType = result.analysis_type;
+      if (!organized[analysisType]) {
+        organized[analysisType] = {
+          analysis: analysisTypes.find(type => type.id === analysisType),
+          results: []
+        };
+      }
+      organized[analysisType].results.push(result);
+    });
+    
+    return organized;
+  };
+
+  const renderConsolidatedResults = (results, analysisType) => {
+    // For multiple runs of the same analysis, show consolidated view
+    if (results.length === 0) return null;
+    
+    const firstResult = results[0];
+    const analysisName = getAnalysisName(analysisType);
+    
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+            {analysisName} - {results.length} Analysis Run{results.length > 1 ? 's' : ''}
+          </h3>
+          <p className="text-blue-700 text-sm">
+            Multiple runs completed with the same parameters. Showing consolidated results.
+          </p>
+        </div>
+        
+        {/* Show the first result as representative */}
+        {renderDetailedResults(firstResult, analysisType)}
+      </div>
+    );
+  };
+
+  const renderDetailedResults = (result, analysisType) => {
+    if (!analysisType || analysisType === 'unknown') {
+      return (
+        <div className="card p-4 bg-yellow-50 border border-yellow-200">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Analysis Type Not Identified</h3>
+          <p className="text-yellow-700">
+            The analysis type could not be determined. This may be due to a mismatch between the analysis ID and the stored analysis types.
+          </p>
+          <div className="mt-2 text-sm text-yellow-600">
+            <p><strong>Result ID:</strong> {result.id}</p>
+            <p><strong>Available Data:</strong> {Object.keys(result).join(', ')}</p>
+          </div>
+        </div>
+      );
+    }
+
+    switch (analysisType) {
+      case 'dcf_wacc':
+        return renderDCFResults(result);
+      case 'apv':
+        return renderAPVResults(result);
+      case 'multiples':
+        return renderComparableResults(result);
+      case 'scenario':
+        return renderScenarioResults(result);
+      case 'sensitivity':
+        return renderSensitivityResults(result);
+      case 'monte_carlo':
+        return renderMonteCarloResults(result);
+      default:
+        return (
+          <div className="card p-4 bg-red-50 border border-red-200">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">❌ Unsupported Analysis Type</h3>
+            <p className="text-red-700">
+              Analysis type "{analysisType}" is not currently supported. Please contact support.
+            </p>
+          </div>
+        );
+    }
   };
 
   const renderDCFResults = (results) => {
@@ -461,22 +567,31 @@ function Results() {
 
           {/* Detailed Results */}
           <div className="space-y-8">
-            {allResults.map((result, index) => (
-              <div key={index} className="card-elevated">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    {getAnalysisName(result.analysis_type)}
-                  </h2>
-                  <p className="text-gray-600">Detailed analysis results and methodology</p>
+            {(() => {
+              const organizedResults = organizeResultsByType(allResults);
+              return Object.entries(organizedResults).map(([analysisType, data]) => (
+                <div key={analysisType} className="card-elevated">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      {data.analysis ? data.analysis.name : (analysisType === 'unknown' ? 'Unknown Analysis Type' : analysisType)}
+                    </h2>
+                    <p className="text-gray-600">
+                      {data.results.length > 1 
+                        ? `${data.results.length} analysis run${data.results.length > 1 ? 's' : ''} with different parameters`
+                        : 'Analysis results and methodology'
+                      }
+                    </p>
+                  </div>
+                  
+                  {/* Show consolidated results if multiple runs */}
+                  {data.results.length > 1 ? (
+                    renderConsolidatedResults(data.results, analysisType)
+                  ) : (
+                    renderDetailedResults(data.results[0], analysisType)
+                  )}
                 </div>
-                
-                {renderDCFResults(result)}
-                {renderComparableResults(result)}
-                {renderMonteCarloResults(result)}
-                {renderSensitivityResults(result)}
-                {renderScenarioResults(result)}
-              </div>
-            ))}
+              ));
+            })()}
           </div>
 
           {/* Action Buttons */}

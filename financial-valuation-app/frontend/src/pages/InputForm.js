@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CSVUpload } from '../components/CSVUpload';
+import { shouldShowSection, shouldShowField } from '../utils/analysisConfig';
 
 function InputForm() {
   const { analysisType } = useParams();
@@ -136,6 +137,132 @@ function InputForm() {
     }));
   };
 
+  const createAnalysisSpecificPayloads = () => {
+    const payloads = {};
+    
+    selectedAnalyses.forEach(analysis => {
+      // Create minimal payload with only required fields for this analysis
+      const payload = {
+        company_name: formData.company_name,
+        valuation_date: formData.valuation_date,
+        forecast_years: parseInt(formData.forecast_years)
+      };
+      
+      // Add fields based on analysis type
+      switch (analysis.id) {
+        case 'dcf_wacc':
+          payload.financial_inputs = {
+            revenue: formData.revenue,
+            ebit_margin: parseFloat(formData.ebit_margin),
+            capex: formData.capex,
+            depreciation: formData.depreciation,
+            nwc_changes: formData.nwc_changes,
+            tax_rate: parseFloat(formData.tax_rate),
+            terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
+            weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital),
+            share_count: parseFloat(formData.share_count),
+            cost_of_debt: parseFloat(formData.cost_of_debt),
+            cash_balance: parseFloat(formData.cash_balance)
+          };
+          break;
+          
+        case 'apv':
+          payload.financial_inputs = {
+            revenue: formData.revenue,
+            ebit_margin: parseFloat(formData.ebit_margin),
+            tax_rate: parseFloat(formData.tax_rate),
+            terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
+            unlevered_cost_of_equity: parseFloat(formData.unlevered_cost_of_equity),
+            share_count: parseFloat(formData.share_count),
+            debt_schedule: formData.debt_schedule,
+            cost_of_debt: parseFloat(formData.cost_of_debt),
+            cash_balance: parseFloat(formData.cash_balance)
+          };
+          break;
+          
+        case 'multiples':
+          payload.comparable_multiples = {
+            "EV/EBITDA": formData.ev_ebitda,
+            "P/E": formData.pe_ratio,
+            "EV/FCF": formData.ev_fcf,
+            "EV/Revenue": formData.ev_revenue
+          };
+          payload.financial_inputs = {
+            revenue: formData.revenue,
+            ebit_margin: parseFloat(formData.ebit_margin),
+            share_count: parseFloat(formData.share_count)
+          };
+          break;
+          
+        case 'scenario':
+        case 'sensitivity':
+          payload.financial_inputs = {
+            revenue: formData.revenue,
+            ebit_margin: parseFloat(formData.ebit_margin),
+            capex: formData.capex,
+            depreciation: formData.depreciation,
+            nwc_changes: formData.nwc_changes,
+            tax_rate: parseFloat(formData.tax_rate),
+            terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
+            weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital),
+            share_count: parseFloat(formData.share_count)
+          };
+          payload.sensitivity_analysis = {
+            wacc_range: formData.wacc_range,
+            ebit_margin_range: formData.ebit_margin_range,
+            terminal_growth_range: formData.terminal_growth_range,
+            target_debt_ratio_range: formData.target_debt_ratio_range
+          };
+          break;
+          
+        case 'monte_carlo':
+          payload.financial_inputs = {
+            revenue: formData.revenue,
+            ebit_margin: parseFloat(formData.ebit_margin),
+            weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital),
+            terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
+            share_count: parseFloat(formData.share_count)
+          };
+          payload.monte_carlo_specs = {
+            runs: parseInt(formData.mc_runs),
+            ebit_margin: {
+              distribution: "normal",
+              params: { 
+                mean: parseFloat(formData.mc_ebit_margin_mean), 
+                std: parseFloat(formData.mc_ebit_margin_std) 
+              }
+            },
+            weighted_average_cost_of_capital: {
+              distribution: "normal",
+              params: { 
+                mean: parseFloat(formData.mc_wacc_mean), 
+                std: parseFloat(formData.mc_wacc_std) 
+              }
+            },
+            terminal_growth_rate: {
+              distribution: "normal",
+              params: { 
+                mean: parseFloat(formData.mc_terminal_growth_mean), 
+                std: parseFloat(formData.mc_terminal_growth_std) 
+              }
+            },
+            levered_beta: {
+              distribution: "normal",
+              params: { 
+                mean: parseFloat(formData.mc_levered_beta_mean), 
+                std: parseFloat(formData.mc_levered_beta_std) 
+              }
+            }
+          };
+          break;
+      }
+      
+      payloads[analysis.id] = payload;
+    });
+    
+    return payloads;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -152,91 +279,21 @@ function InputForm() {
       const analysisResponses = await Promise.all(analysisPromises);
       const analysisIds = analysisResponses.map(response => response.data.id);
 
-      // Prepare the complete input data
-      const completeInputData = {
-        company_name: formData.company_name,
-        valuation_date: formData.valuation_date,
-        forecast_years: parseInt(formData.forecast_years),
-        financial_inputs: {
-          revenue: formData.revenue,
-          ebit_margin: parseFloat(formData.ebit_margin),
-          tax_rate: parseFloat(formData.tax_rate),
-          capex: formData.capex,
-          depreciation: formData.depreciation,
-          nwc_changes: formData.nwc_changes,
-          amortization: formData.amortization,
-          other_non_cash: formData.other_non_cash,
-          other_working_capital: formData.other_working_capital,
-          weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital),
-          terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
-          share_count: parseFloat(formData.share_count),
-          cost_of_debt: parseFloat(formData.cost_of_debt),
-          cash_balance: parseFloat(formData.cash_balance),
-          cost_of_capital: {
-            risk_free_rate: parseFloat(formData.risk_free_rate),
-            market_risk_premium: parseFloat(formData.market_risk_premium),
-            levered_beta: parseFloat(formData.levered_beta),
-            unlevered_beta: parseFloat(formData.unlevered_beta),
-            target_debt_to_value_ratio: parseFloat(formData.target_debt_to_value_ratio),
-            unlevered_cost_of_equity: parseFloat(formData.unlevered_cost_of_equity)
-          },
-          debt_schedule: formData.debt_schedule
-        },
-        comparable_multiples: {
-          "EV/EBITDA": formData.ev_ebitda,
-          "P/E": formData.pe_ratio,
-          "EV/FCF": formData.ev_fcf,
-          "EV/Revenue": formData.ev_revenue
-        },
-        sensitivity_analysis: {
-          wacc_range: formData.wacc_range,
-          ebit_margin_range: formData.ebit_margin_range,
-          terminal_growth_range: formData.terminal_growth_range,
-          target_debt_ratio_range: formData.target_debt_ratio_range
-        },
-        monte_carlo_specs: {
-          runs: parseInt(formData.mc_runs), // FIXED: Include runs parameter
-          ebit_margin: {
-            distribution: "normal",
-            params: { 
-              mean: parseFloat(formData.mc_ebit_margin_mean), 
-              std: parseFloat(formData.mc_ebit_margin_std) 
-            }
-          },
-          weighted_average_cost_of_capital: {
-            distribution: "normal",
-            params: { 
-              mean: parseFloat(formData.mc_wacc_mean), 
-              std: parseFloat(formData.mc_wacc_std) 
-            }
-          },
-          terminal_growth_rate: {
-            distribution: "normal",
-            params: { 
-              mean: parseFloat(formData.mc_terminal_growth_mean), 
-              std: parseFloat(formData.mc_terminal_growth_std) 
-            }
-          },
-          levered_beta: {
-            distribution: "normal",
-            params: { 
-              mean: parseFloat(formData.mc_levered_beta_mean), 
-              std: parseFloat(formData.mc_levered_beta_std) 
-            }
-          }
-        }
-      };
+      // Create analysis-specific payloads
+      const analysisPayloads = createAnalysisSpecificPayloads();
+      
+      // Submit each analysis with its specific data
+      const submissionPromises = analysisIds.map((analysisId, index) => {
+        const analysisType = selectedAnalyses[index].id;
+        const payload = analysisPayloads[analysisType];
+        return axios.post(`/api/valuation/${analysisId}/inputs`, {
+          financial_inputs: payload
+        });
+      });
 
-      // Submit inputs for each analysis
-      const inputPromises = analysisIds.map(analysisId =>
-        axios.post(`/api/valuation/${analysisId}/inputs`, {
-          financial_inputs: completeInputData
-        })
-      );
+      await Promise.all(submissionPromises);
 
-      await Promise.all(inputPromises);
-
-      // Navigate to results with all analysis IDs
+      // Navigate to results with analysis IDs
       const allIds = analysisIds.join(',');
       navigate(`/results/${allIds}`);
     } catch (error) {
@@ -245,6 +302,25 @@ function InputForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const shouldShowSection = (sectionName) => {
+    return selectedAnalyses.some(analysis => {
+      switch (sectionName) {
+        case 'core_financials':
+          return ['dcf_wacc', 'apv', 'scenario', 'sensitivity', 'monte_carlo'].includes(analysis.id);
+        case 'cost_of_capital':
+          return ['dcf_wacc', 'apv'].includes(analysis.id);
+        case 'comparable_analysis':
+          return analysis.id === 'multiples';
+        case 'sensitivity_ranges':
+          return ['scenario', 'sensitivity'].includes(analysis.id);
+        case 'monte_carlo_specs':
+          return analysis.id === 'monte_carlo';
+        default:
+          return true;
+      }
+    });
   };
 
   const renderArrayInput = (fieldName, label, required = false) => (
@@ -300,16 +376,26 @@ function InputForm() {
         <p className="text-sm text-gray-500 mt-2">You can download a sample CSV, fill it, and upload it here to auto-fill the form.</p>
       </div>
       
-      <div className="card">
-        <h2>Selected Analyses:</h2>
-        <div style={{ marginBottom: '20px' }}>
+      <div className="card-elevated mb-6">
+        <h2 className="text-lg font-semibold mb-4">Selected Analysis Types</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           {selectedAnalyses.map(analysis => (
-            <span key={analysis.id} className="selected-tag">
-              {analysis.icon} {analysis.name}
-            </span>
+            <div key={analysis.id} className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+              <span className="text-2xl">{analysis.icon}</span>
+              <div>
+                <p className="font-medium text-blue-900">{analysis.name}</p>
+                <p className="text-sm text-blue-700">{analysis.complexity} complexity</p>
+              </div>
+            </div>
           ))}
         </div>
-        <p>All selected analyses will use the same financial inputs below.</p>
+        
+        <div className="p-3 bg-green-50 rounded-lg">
+          <p className="text-sm text-green-800">
+            <strong>Form will show only relevant fields</strong> for your selected analyses.
+            This ensures you only input the data you need.
+          </p>
+        </div>
       </div>
       
       <form onSubmit={handleSubmit}>
@@ -355,398 +441,426 @@ function InputForm() {
         </div>
 
         {/* Core Financial Inputs */}
-        <div className="card">
-          <h2>Core Financial Inputs</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-            <div>
-              <label>EBIT Margin (%) *</label>
-              <input
-                type="number"
-                name="ebit_margin"
-                value={formData.ebit_margin}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Tax Rate (%) *</label>
-              <input
-                type="number"
-                name="tax_rate"
-                value={formData.tax_rate}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>WACC (%) *</label>
-              <input
-                type="number"
-                name="weighted_average_cost_of_capital"
-                value={formData.weighted_average_cost_of_capital}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Terminal Growth Rate (%) *</label>
-              <input
-                type="number"
-                name="terminal_growth_rate"
-                value={formData.terminal_growth_rate}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="0.1"
-                required
-              />
-            </div>
-            <div>
-              <label>Share Count (millions) *</label>
-              <input
-                type="number"
-                name="share_count"
-                value={formData.share_count}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.1"
-                min="0"
-                required
-              />
-            </div>
-            <div>
-              <label>Cost of Debt (%) *</label>
-              <input
-                type="number"
-                name="cost_of_debt"
-                value={formData.cost_of_debt}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Cash Balance (millions)</label>
-              <input
-                type="number"
-                name="cash_balance"
-                value={formData.cash_balance}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.1"
-                min="0"
-                required
-              />
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Core Financial Inputs</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+              <div>
+                <label>EBIT Margin (%) *</label>
+                <input
+                  type="number"
+                  name="ebit_margin"
+                  value={formData.ebit_margin}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
+              <div>
+                <label>Tax Rate (%) *</label>
+                <input
+                  type="number"
+                  name="tax_rate"
+                  value={formData.tax_rate}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
+              {shouldShowSection('cost_of_capital') && (
+                <>
+                  <div>
+                    <label>WACC (%) *</label>
+                    <input
+                      type="number"
+                      name="weighted_average_cost_of_capital"
+                      value={formData.weighted_average_cost_of_capital}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      step="0.001"
+                      min="0"
+                      max="1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>Terminal Growth Rate (%) *</label>
+                    <input
+                      type="number"
+                      name="terminal_growth_rate"
+                      value={formData.terminal_growth_rate}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      step="0.001"
+                      min="0"
+                      max="0.1"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+              <div>
+                <label>Share Count (millions) *</label>
+                <input
+                  type="number"
+                  name="share_count"
+                  value={formData.share_count}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.1"
+                  min="0"
+                  required
+                />
+              </div>
+              {shouldShowSection('cost_of_capital') && (
+                <>
+                  <div>
+                    <label>Cost of Debt (%) *</label>
+                    <input
+                      type="number"
+                      name="cost_of_debt"
+                      value={formData.cost_of_debt}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      step="0.001"
+                      min="0"
+                      max="1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>Cash Balance (millions)</label>
+                    <input
+                      type="number"
+                      name="cash_balance"
+                      value={formData.cash_balance}
+                      onChange={handleInputChange}
+                      className="form-input"
+                      step="0.1"
+                      min="0"
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Revenue Projections */}
-        <div className="card">
-          <h2>Revenue Projections (millions) *</h2>
-          {renderArrayInput('revenue', 'Revenue', true)}
-        </div>
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Revenue Projections (millions) *</h2>
+            {renderArrayInput('revenue', 'Revenue', true)}
+          </div>
+        )}
 
         {/* Capital Expenditure */}
-        <div className="card">
-          <h2>Capital Expenditure (millions) *</h2>
-          {renderArrayInput('capex', 'Capital Expenditure', true)}
-        </div>
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Capital Expenditure (millions) *</h2>
+            {renderArrayInput('capex', 'Capital Expenditure', true)}
+          </div>
+        )}
 
         {/* Depreciation */}
-        <div className="card">
-          <h2>Depreciation (millions) *</h2>
-          {renderArrayInput('depreciation', 'Depreciation', true)}
-        </div>
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Depreciation (millions) *</h2>
+            {renderArrayInput('depreciation', 'Depreciation', true)}
+          </div>
+        )}
 
         {/* Net Working Capital Changes */}
-        <div className="card">
-          <h2>Net Working Capital Changes (millions) *</h2>
-          {renderArrayInput('nwc_changes', 'NWC Changes', true)}
-        </div>
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Net Working Capital Changes (millions) *</h2>
+            {renderArrayInput('nwc_changes', 'NWC Changes', true)}
+          </div>
+        )}
 
         {/* Optional Items */}
-        <div className="card">
-          <h2>Optional Items (millions)</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            These fields are optional. Leave as 0 if not applicable. They will be included in Free Cash Flow calculations if provided.
-          </p>
-          {renderArrayInput('amortization', 'Amortization (optional)')}
-          {renderArrayInput('other_non_cash', 'Other Non-Cash Items (optional)')}
-          {renderArrayInput('other_working_capital', 'Other Working Capital (optional)')}
-        </div>
+        {shouldShowSection('core_financials') && (
+          <div className="card">
+            <h2>Optional Items (millions)</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              These fields are optional. Leave as 0 if not applicable. They will be included in Free Cash Flow calculations if provided.
+            </p>
+            {renderArrayInput('amortization', 'Amortization (optional)')}
+            {renderArrayInput('other_non_cash', 'Other Non-Cash Items (optional)')}
+            {renderArrayInput('other_working_capital', 'Other Working Capital (optional)')}
+          </div>
+        )}
 
         {/* Cost of Capital */}
-        <div className="card">
-          <h2>Cost of Capital</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-            <div>
-              <label>Risk-Free Rate (%)</label>
-              <input
-                type="number"
-                name="risk_free_rate"
-                value={formData.risk_free_rate}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Market Risk Premium (%)</label>
-              <input
-                type="number"
-                name="market_risk_premium"
-                value={formData.market_risk_premium}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Levered Beta</label>
-              <input
-                type="number"
-                name="levered_beta"
-                value={formData.levered_beta}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-                min="0"
-                max="5"
-                required
-              />
-            </div>
-            <div>
-              <label>Unlevered Beta</label>
-              <input
-                type="number"
-                name="unlevered_beta"
-                value={formData.unlevered_beta}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-                min="0"
-                max="5"
-                required
-              />
-            </div>
-            <div>
-              <label>Target Debt-to-Value Ratio</label>
-              <input
-                type="number"
-                name="target_debt_to_value_ratio"
-                value={formData.target_debt_to_value_ratio}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-                min="0"
-                max="1"
-                required
-              />
-            </div>
-            <div>
-              <label>Unlevered Cost of Equity (%)</label>
-              <input
-                type="number"
-                name="unlevered_cost_of_equity"
-                value={formData.unlevered_cost_of_equity}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-                min="0"
-                max="1"
-                required
-              />
+        {shouldShowSection('cost_of_capital') && (
+          <div className="card">
+            <h2>Cost of Capital</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+              <div>
+                <label>Risk-Free Rate (%)</label>
+                <input
+                  type="number"
+                  name="risk_free_rate"
+                  value={formData.risk_free_rate}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
+              <div>
+                <label>Market Risk Premium (%)</label>
+                <input
+                  type="number"
+                  name="market_risk_premium"
+                  value={formData.market_risk_premium}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
+              <div>
+                <label>Levered Beta</label>
+                <input
+                  type="number"
+                  name="levered_beta"
+                  value={formData.levered_beta}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                  min="0"
+                  max="5"
+                  required
+                />
+              </div>
+              <div>
+                <label>Unlevered Beta</label>
+                <input
+                  type="number"
+                  name="unlevered_beta"
+                  value={formData.unlevered_beta}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                  min="0"
+                  max="5"
+                  required
+                />
+              </div>
+              <div>
+                <label>Target Debt-to-Value Ratio</label>
+                <input
+                  type="number"
+                  name="target_debt_to_value_ratio"
+                  value={formData.target_debt_to_value_ratio}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
+              <div>
+                <label>Unlevered Cost of Equity (%)</label>
+                <input
+                  type="number"
+                  name="unlevered_cost_of_equity"
+                  value={formData.unlevered_cost_of_equity}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                  min="0"
+                  max="1"
+                  required
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Comparable Multiples */}
-        <div className="card">
-          <h2>Comparable Multiples</h2>
-          {renderMultiplesInput('ev_ebitda', 'EV/EBITDA Multiples')}
-          {renderMultiplesInput('pe_ratio', 'P/E Multiples')}
-          {renderMultiplesInput('ev_fcf', 'EV/FCF Multiples')}
-          {renderMultiplesInput('ev_revenue', 'EV/Revenue Multiples')}
-        </div>
+        {shouldShowSection('comparable_analysis') && (
+          <div className="card">
+            <h2>Comparable Multiples</h2>
+            {renderMultiplesInput('ev_ebitda', 'EV/EBITDA Multiples')}
+            {renderMultiplesInput('pe_ratio', 'P/E Multiples')}
+            {renderMultiplesInput('ev_fcf', 'EV/FCF Multiples')}
+            {renderMultiplesInput('ev_revenue', 'EV/Revenue Multiples')}
+          </div>
+        )}
 
         {/* Sensitivity Analysis */}
-        <div className="card">
-          <h2>Sensitivity Analysis Ranges</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-            <div>
-              <label>WACC Range (min)</label>
-              <input
-                type="number"
-                name="wacc_range_min"
-                value={formData.wacc_range[0]}
-                onChange={(e) => {
-                  const newArray = [...formData.wacc_range];
-                  newArray[0] = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, wacc_range: newArray }));
-                }}
-                className="form-input"
-                step="0.001"
-              />
-            </div>
-            <div>
-              <label>WACC Range (max)</label>
-              <input
-                type="number"
-                name="wacc_range_max"
-                value={formData.wacc_range[4]}
-                onChange={(e) => {
-                  const newArray = [...formData.wacc_range];
-                  newArray[4] = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, wacc_range: newArray }));
-                }}
-                className="form-input"
-                step="0.001"
-              />
-            </div>
-            <div>
-              <label>EBIT Margin Range (min)</label>
-              <input
-                type="number"
-                name="ebit_margin_range_min"
-                value={formData.ebit_margin_range[0]}
-                onChange={(e) => {
-                  const newArray = [...formData.ebit_margin_range];
-                  newArray[0] = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
-                }}
-                className="form-input"
-                step="0.01"
-              />
-            </div>
-            <div>
-              <label>EBIT Margin Range (max)</label>
-              <input
-                type="number"
-                name="ebit_margin_range_max"
-                value={formData.ebit_margin_range[4]}
-                onChange={(e) => {
-                  const newArray = [...formData.ebit_margin_range];
-                  newArray[4] = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
-                }}
-                className="form-input"
-                step="0.01"
-              />
+        {shouldShowSection('sensitivity_ranges') && (
+          <div className="card">
+            <h2>Sensitivity Analysis Ranges</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+              <div>
+                <label>WACC Range (min)</label>
+                <input
+                  type="number"
+                  name="wacc_range_min"
+                  value={formData.wacc_range[0]}
+                  onChange={(e) => {
+                    const newArray = [...formData.wacc_range];
+                    newArray[0] = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({ ...prev, wacc_range: newArray }));
+                  }}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
+              <div>
+                <label>WACC Range (max)</label>
+                <input
+                  type="number"
+                  name="wacc_range_max"
+                  value={formData.wacc_range[4]}
+                  onChange={(e) => {
+                    const newArray = [...formData.wacc_range];
+                    newArray[4] = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({ ...prev, wacc_range: newArray }));
+                  }}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
+              <div>
+                <label>EBIT Margin Range (min)</label>
+                <input
+                  type="number"
+                  name="ebit_margin_range_min"
+                  value={formData.ebit_margin_range[0]}
+                  onChange={(e) => {
+                    const newArray = [...formData.ebit_margin_range];
+                    newArray[0] = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
+                  }}
+                  className="form-input"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label>EBIT Margin Range (max)</label>
+                <input
+                  type="number"
+                  name="ebit_margin_range_max"
+                  value={formData.ebit_margin_range[4]}
+                  onChange={(e) => {
+                    const newArray = [...formData.ebit_margin_range];
+                    newArray[4] = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
+                  }}
+                  className="form-input"
+                  step="0.01"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Monte Carlo Parameters */}
-        <div className="card">
-          <h2>Monte Carlo Parameters</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-            <div>
-              <label>Number of Simulation Runs *</label>
-              <input
-                type="number"
-                name="mc_runs"
-                value={formData.mc_runs}
-                onChange={handleInputChange}
-                className="form-input"
-                min="100"
-                max="50000"
-                step="100"
-                required
-                title="Number of Monte Carlo simulation runs (100-50,000)"
-              />
-              <small className="text-sm text-gray-500">Recommended: 1,000-10,000 runs</small>
-            </div>
-            <div>
-              <label>EBIT Margin Mean</label>
-              <input
-                type="number"
-                name="mc_ebit_margin_mean"
-                value={formData.mc_ebit_margin_mean}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-              />
-            </div>
-            <div>
-              <label>EBIT Margin Std Dev</label>
-              <input
-                type="number"
-                name="mc_ebit_margin_std"
-                value={formData.mc_ebit_margin_std}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.01"
-              />
-            </div>
-            <div>
-              <label>WACC Mean</label>
-              <input
-                type="number"
-                name="mc_wacc_mean"
-                value={formData.mc_wacc_mean}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-              />
-            </div>
-            <div>
-              <label>WACC Std Dev</label>
-              <input
-                type="number"
-                name="mc_wacc_std"
-                value={formData.mc_wacc_std}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-              />
-            </div>
-            <div>
-              <label>Terminal Growth Mean</label>
-              <input
-                type="number"
-                name="mc_terminal_growth_mean"
-                value={formData.mc_terminal_growth_mean}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-              />
-            </div>
-            <div>
-              <label>Terminal Growth Std Dev</label>
-              <input
-                type="number"
-                name="mc_terminal_growth_std"
-                value={formData.mc_terminal_growth_std}
-                onChange={handleInputChange}
-                className="form-input"
-                step="0.001"
-              />
+        {shouldShowSection('monte_carlo_specs') && (
+          <div className="card">
+            <h2>Monte Carlo Parameters</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+              <div>
+                <label>Number of Simulation Runs *</label>
+                <input
+                  type="number"
+                  name="mc_runs"
+                  value={formData.mc_runs}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  min="100"
+                  max="50000"
+                  step="100"
+                  required
+                  title="Number of Monte Carlo simulation runs (100-50,000)"
+                />
+                <small className="text-sm text-gray-500">Recommended: 1,000-10,000 runs</small>
+              </div>
+              <div>
+                <label>EBIT Margin Mean</label>
+                <input
+                  type="number"
+                  name="mc_ebit_margin_mean"
+                  value={formData.mc_ebit_margin_mean}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label>EBIT Margin Std Dev</label>
+                <input
+                  type="number"
+                  name="mc_ebit_margin_std"
+                  value={formData.mc_ebit_margin_std}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label>WACC Mean</label>
+                <input
+                  type="number"
+                  name="mc_wacc_mean"
+                  value={formData.mc_wacc_mean}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
+              <div>
+                <label>WACC Std Dev</label>
+                <input
+                  type="number"
+                  name="mc_wacc_std"
+                  value={formData.mc_wacc_std}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
+              <div>
+                <label>Terminal Growth Mean</label>
+                <input
+                  type="number"
+                  name="mc_terminal_growth_mean"
+                  value={formData.mc_terminal_growth_mean}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
+              <div>
+                <label>Terminal Growth Std Dev</label>
+                <input
+                  type="number"
+                  name="mc_terminal_growth_std"
+                  value={formData.mc_terminal_growth_std}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  step="0.001"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="card text-center">
           <button 
