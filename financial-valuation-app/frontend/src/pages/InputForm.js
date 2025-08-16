@@ -257,7 +257,7 @@ function InputForm() {
             type="number"
             value={value}
             onChange={(e) => handleArrayInputChange(fieldName, index, e.target.value)}
-            className="input"
+            className="form-input"
             placeholder={`Year ${index + 1}`}
             step="0.1"
             required={required}
@@ -281,7 +281,7 @@ function InputForm() {
               newArray[index] = parseFloat(e.target.value) || 0;
               setFormData(prev => ({ ...prev, [fieldName]: newArray }));
             }}
-            className="input"
+            className="form-input"
             placeholder={`Multiple ${index + 1}`}
             step="0.1"
           />
@@ -324,7 +324,7 @@ function InputForm() {
                 name="company_name"
                 value={formData.company_name}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 required
               />
             </div>
@@ -335,7 +335,7 @@ function InputForm() {
                 name="valuation_date"
                 value={formData.valuation_date}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
               />
             </div>
             <div>
@@ -345,9 +345,10 @@ function InputForm() {
                 name="forecast_years"
                 value={formData.forecast_years}
                 onChange={handleForecastYearsChange}
-                className="input"
+                className="form-input"
                 min="1"
                 max="10"
+                required
               />
             </div>
           </div>
@@ -364,7 +365,7 @@ function InputForm() {
                 name="ebit_margin"
                 value={formData.ebit_margin}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.01"
                 min="0"
                 max="1"
@@ -378,7 +379,7 @@ function InputForm() {
                 name="tax_rate"
                 value={formData.tax_rate}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.01"
                 min="0"
                 max="1"
@@ -392,7 +393,7 @@ function InputForm() {
                 name="weighted_average_cost_of_capital"
                 value={formData.weighted_average_cost_of_capital}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
                 max="1"
@@ -406,10 +407,10 @@ function InputForm() {
                 name="terminal_growth_rate"
                 value={formData.terminal_growth_rate}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
-                max="1"
+                max="0.1"
                 required
               />
             </div>
@@ -420,8 +421,9 @@ function InputForm() {
                 name="share_count"
                 value={formData.share_count}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.1"
+                min="0"
                 required
               />
             </div>
@@ -432,7 +434,7 @@ function InputForm() {
                 name="cost_of_debt"
                 value={formData.cost_of_debt}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
                 max="1"
@@ -446,8 +448,10 @@ function InputForm() {
                 name="cash_balance"
                 value={formData.cash_balance}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.1"
+                min="0"
+                required
               />
             </div>
           </div>
@@ -499,10 +503,11 @@ function InputForm() {
                 name="risk_free_rate"
                 value={formData.risk_free_rate}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
                 max="1"
+                required
               />
             </div>
             <div>
@@ -512,10 +517,11 @@ function InputForm() {
                 name="market_risk_premium"
                 value={formData.market_risk_premium}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
                 max="1"
+                required
               />
             </div>
             <div>
@@ -525,8 +531,11 @@ function InputForm() {
                 name="levered_beta"
                 value={formData.levered_beta}
                 onChange={handleInputChange}
-                className="input"
-                step="0.1"
+                className="form-input"
+                step="0.01"
+                min="0"
+                max="5"
+                required
               />
             </div>
             <div>
@@ -536,8 +545,11 @@ function InputForm() {
                 name="unlevered_beta"
                 value={formData.unlevered_beta}
                 onChange={handleInputChange}
-                className="input"
-                step="0.1"
+                className="form-input"
+                step="0.01"
+                min="0"
+                max="5"
+                required
               />
             </div>
             <div>
@@ -547,10 +559,11 @@ function InputForm() {
                 name="target_debt_to_value_ratio"
                 value={formData.target_debt_to_value_ratio}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.01"
                 min="0"
                 max="1"
+                required
               />
             </div>
             <div>
@@ -560,10 +573,11 @@ function InputForm() {
                 name="unlevered_cost_of_equity"
                 value={formData.unlevered_cost_of_equity}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
                 min="0"
                 max="1"
+                required
               />
             </div>
           </div>
@@ -593,7 +607,7 @@ function InputForm() {
                   newArray[0] = parseFloat(e.target.value) || 0;
                   setFormData(prev => ({ ...prev, wacc_range: newArray }));
                 }}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
@@ -608,7 +622,7 @@ function InputForm() {
                   newArray[4] = parseFloat(e.target.value) || 0;
                   setFormData(prev => ({ ...prev, wacc_range: newArray }));
                 }}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
@@ -623,7 +637,7 @@ function InputForm() {
                   newArray[0] = parseFloat(e.target.value) || 0;
                   setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
                 }}
-                className="input"
+                className="form-input"
                 step="0.01"
               />
             </div>
@@ -638,7 +652,7 @@ function InputForm() {
                   newArray[4] = parseFloat(e.target.value) || 0;
                   setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
                 }}
-                className="input"
+                className="form-input"
                 step="0.01"
               />
             </div>
@@ -656,7 +670,7 @@ function InputForm() {
                 name="mc_runs"
                 value={formData.mc_runs}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 min="100"
                 max="50000"
                 step="100"
@@ -672,7 +686,7 @@ function InputForm() {
                 name="mc_ebit_margin_mean"
                 value={formData.mc_ebit_margin_mean}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.01"
               />
             </div>
@@ -683,7 +697,7 @@ function InputForm() {
                 name="mc_ebit_margin_std"
                 value={formData.mc_ebit_margin_std}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.01"
               />
             </div>
@@ -694,7 +708,7 @@ function InputForm() {
                 name="mc_wacc_mean"
                 value={formData.mc_wacc_mean}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
@@ -705,7 +719,7 @@ function InputForm() {
                 name="mc_wacc_std"
                 value={formData.mc_wacc_std}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
@@ -716,7 +730,7 @@ function InputForm() {
                 name="mc_terminal_growth_mean"
                 value={formData.mc_terminal_growth_mean}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
@@ -727,17 +741,17 @@ function InputForm() {
                 name="mc_terminal_growth_std"
                 value={formData.mc_terminal_growth_std}
                 onChange={handleInputChange}
-                className="input"
+                className="form-input"
                 step="0.001"
               />
             </div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card text-center">
           <button 
             type="submit" 
-            className="button" 
+            className="btn btn-primary text-lg px-8 py-4" 
             disabled={loading}
           >
             {loading ? 'Processing...' : `Run ${selectedAnalyses.length} Analysis${selectedAnalyses.length > 1 ? 'es' : ''}`}

@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
+import { BarChart3, AlertCircle } from 'lucide-react';
 
 function Results() {
   const { analysisId } = useParams();
@@ -386,73 +387,133 @@ function Results() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h2>Loading results...</h2>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h2>Error: {error}</h2>
-          <button className="button" onClick={fetchResults}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!allResults || allResults.length === 0) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h2>No results found</h2>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container">
-      <h1>Financial Valuation Results</h1>
+    <div className="container-modern">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <BarChart3 className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          Financial Valuation Results
+        </h1>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Comprehensive analysis results for your selected valuation methods
+        </p>
+      </div>
 
-      {/* Show only the analysis types that were selected by the user */}
-      {allResults.length > 0 && (
-        <div>
-          {/* DCF Results - only if selected */}
-          {wasAnalysisSelected('dcf_wacc') && renderDCFResults(allResults[0])}
-
-          {/* APV Results - only if selected */}
-          {wasAnalysisSelected('apv') && renderAPVResults(allResults[0])}
-
-          {/* Comparable Multiples Results - only if selected */}
-          {wasAnalysisSelected('multiples') && renderComparableResults(allResults[0])}
-
-          {/* Scenario Analysis Results - only if selected */}
-          {wasAnalysisSelected('scenario') && renderScenarioResults(allResults[0])}
-
-          {/* Sensitivity Analysis Results - only if selected */}
-          {wasAnalysisSelected('sensitivity') && renderSensitivityResults(allResults[0])}
-
-          {/* Monte Carlo Results - only if selected */}
-          {wasAnalysisSelected('monte_carlo') && renderMonteCarloResults(allResults[0])}
+      {loading && (
+        <div className="card-elevated text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Processing Results</h2>
+          <p className="text-gray-600">Please wait while we generate your valuation analysis...</p>
         </div>
       )}
 
+      {error && (
+        <div className="card-elevated text-center">
+          <div className="flex justify-center mb-4">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Results</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button className="btn btn-primary" onClick={fetchResults}>
+            Retry
+          </button>
+        </div>
+      )}
 
+      {!loading && !error && allResults.length > 0 && (
+        <div className="space-y-8">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {allResults.map((result, index) => {
+              const analysisType = analysisTypes.find(type => type.id === result.analysis_type);
+              if (!analysisType) return null;
 
-      <div className="card">
-        <button className="button" onClick={() => navigate('/')}>
-          Start New Analysis
-        </button>
-      </div>
+              return (
+                <div key={index} className="card text-center">
+                  <div className="p-4 bg-blue-50 rounded-lg mb-4">
+                    <h3 className="text-lg font-semibold text-blue-800">{analysisType.name}</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {result.enterprise_value && (
+                      <div>
+                        <p className="text-sm text-gray-600">Enterprise Value</p>
+                        <p className="text-2xl font-bold text-blue-700">{formatCurrency(result.enterprise_value)}</p>
+                      </div>
+                    )}
+                    {result.equity_value && (
+                      <div>
+                        <p className="text-sm text-gray-600">Equity Value</p>
+                        <p className="text-xl font-semibold text-green-700">{formatCurrency(result.equity_value)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Detailed Results */}
+          <div className="space-y-8">
+            {allResults.map((result, index) => (
+              <div key={index} className="card-elevated">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {getAnalysisName(result.analysis_type)}
+                  </h2>
+                  <p className="text-gray-600">Detailed analysis results and methodology</p>
+                </div>
+                
+                {renderDCFResults(result)}
+                {renderComparableResults(result)}
+                {renderMonteCarloResults(result)}
+                {renderSensitivityResults(result)}
+                {renderScenarioResults(result)}
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="card text-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button 
+                onClick={() => navigate('/')}
+                className="btn btn-secondary"
+              >
+                Start New Analysis
+              </button>
+              <button 
+                onClick={() => window.print()}
+                className="btn btn-outline"
+              >
+                Export Results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && allResults.length === 0 && (
+        <div className="card-elevated text-center">
+          <div className="flex justify-center mb-4">
+            <BarChart3 className="h-8 w-8 text-gray-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Results Available</h2>
+          <p className="text-gray-600 mb-4">No analysis results were found for the selected criteria.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="btn btn-primary"
+          >
+            Start New Analysis
+          </button>
+        </div>
+      )}
     </div>
   );
 }
