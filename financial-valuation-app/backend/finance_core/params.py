@@ -98,6 +98,40 @@ class ValuationParameters:
         for param_name, param_value in parameters_to_validate:
             if param_value < 0:
                 raise ValueError(f"{param_name} cannot be negative: {param_value}")
+        
+        # Validate WACC consistency when using input WACC
+        if self.use_input_wacc and self.weighted_average_cost_of_capital > 0:
+            self._validate_wacc_consistency()
+    
+    def _validate_wacc_consistency(self):
+        """
+        Validate that WACC components are consistent with the inputted WACC value.
+        
+        This validation ensures that when use_input_wacc = True, the component inputs
+        (cost of equity, cost of debt, target debt ratio, tax rate) actually produce
+        the specified WACC value within a reasonable tolerance.
+        
+        Raises:
+            ValueError: If WACC components don't reconcile to the inputted value
+        """
+        try:
+            calculated_wacc = self.calculate_wacc_from_components()
+            input_wacc = self.weighted_average_cost_of_capital
+            
+            # Allow for small rounding differences (0.1% tolerance)
+            tolerance = 0.001
+            if abs(calculated_wacc - input_wacc) > tolerance:
+                raise ValueError(
+                    f"WACC components don't reconcile to inputted value: "
+                    f"calculated {calculated_wacc:.1%} vs inputted {input_wacc:.1%}. "
+                    f"Check cost of equity, cost of debt, target debt ratio, and tax rate."
+                )
+        except ValueError as e:
+            # Re-raise validation errors
+            raise e
+        except Exception as e:
+            # For other errors (e.g., missing components), just warn
+            print(f"Warning: Unable to validate WACC consistency: {str(e)}")
     
     def _validate_terminal_value_assumptions(self):
         """Validate terminal value assumptions for professional reasonableness."""
@@ -199,4 +233,47 @@ class ValuationParameters:
         debt_ratio = current_debt / current_equity if current_equity > 0 else 0.0
         
         levered_beta = self.unlevered_beta * (1 + (1 - self.corporate_tax_rate) * debt_ratio)
-        return self.risk_free_rate + levered_beta * self.equity_risk_premium 
+        return self.risk_free_rate + levered_beta * self.equity_risk_premium
+    
+    def calculate_wacc_from_components(self) -> float:
+        """
+        Calculate WACC from component inputs for validation purposes.
+        
+        This method calculates WACC using the target capital structure approach
+        from the component inputs (cost of equity, cost of debt, target debt ratio, tax rate).
+        
+        Returns:
+            float: Calculated WACC as decimal
+            
+        Formula:
+            WACC = (1 - D/V) × Re + (D/V) × Rd × (1-T)
+            where:
+            - D/V = target_debt_to_value_ratio
+            - Re = levered cost of equity
+            - Rd = cost of debt
+            - T = corporate tax rate
+        """
+        if self.target_debt_to_value_ratio <= 0:
+            raise ValueError("target_debt_to_value_ratio must be positive for WACC calculation")
+        
+        if self.cost_of_debt <= 0:
+            raise ValueError("cost_of_debt must be positive for WACC calculation")
+        
+        if self.corporate_tax_rate < 0 or self.corporate_tax_rate >= 1:
+            raise ValueError("corporate_tax_rate must be between 0 and 1")
+        
+        # Calculate cost of equity from available inputs
+        cost_of_equity = self.calculate_levered_cost_of_equity()
+        if cost_of_equity <= 0:
+            raise ValueError("Unable to calculate valid cost of equity from available inputs")
+        
+        # Calculate WACC using target capital structure
+        equity_weight = 1 - self.target_debt_to_value_ratio
+        debt_weight = self.target_debt_to_value_ratio
+        
+        wacc = (
+            equity_weight * cost_of_equity + 
+            debt_weight * self.cost_of_debt * (1 - self.corporate_tax_rate)
+        )
+        
+        return wacc 

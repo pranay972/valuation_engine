@@ -192,9 +192,9 @@ def calculate_dcf_valuation_wacc(valuation_parameters: ValuationParameters) -> T
             (1 + weighted_average_cost_of_capital) ** (len(free_cash_flow_series) + 0.5)
         )
     else:
-        # Terminal value starts at end of year after last forecast
+        # Terminal value starts at end of final forecast year (year 5)
         present_value_of_terminal = terminal_value / (
-            (1 + weighted_average_cost_of_capital) ** (len(free_cash_flow_series) + 1)
+            (1 + weighted_average_cost_of_capital) ** len(free_cash_flow_series)
         )
 
     # Step 5: Calculate enterprise value
@@ -257,9 +257,81 @@ def calculate_present_value_of_tax_shields(
                 if use_mid_year_convention:
                     discount_factor = (1 + unlevered_cost_of_equity) ** (year + 0.5)
                 else:
+                    # Tax shield occurs at end of year
                     discount_factor = (1 + unlevered_cost_of_equity) ** (year + 1)
                 
                 present_value_of_tax_shields += tax_shield / discount_factor
+    
+    return present_value_of_tax_shields
+
+def calculate_present_value_of_tax_shields_enhanced(
+    debt_schedule: Dict[int, float], 
+    cost_of_debt: float, 
+    corporate_tax_rate: float, 
+    unlevered_cost_of_equity: float,
+    terminal_growth_rate: float,
+    use_mid_year_convention: bool = False
+) -> float:
+    """
+    Calculate present value of interest tax shields for APV valuation including terminal period.
+    
+    This enhanced function calculates the present value of interest tax shields for both
+    the explicit forecast period and the terminal period, providing a complete APV valuation.
+    
+    Formula: 
+    - Forecast Period: Σ[Interest Expense × Tax Rate / (1 + Unlevered Cost of Equity)^t]
+    - Terminal Period: Terminal Tax Shield / (Unlevered Cost of Equity - Terminal Growth Rate)
+    
+    Args:
+        debt_schedule: Dictionary mapping year to debt level (USD)
+        cost_of_debt: Cost of debt as decimal
+        corporate_tax_rate: Corporate tax rate as decimal
+        unlevered_cost_of_equity: Unlevered cost of equity as decimal
+        terminal_growth_rate: Terminal growth rate for perpetuity calculation
+        use_mid_year_convention: Whether to use mid-year discounting convention
+        
+    Returns:
+        float: Present value of tax shields including terminal period (USD)
+    """
+    present_value_of_tax_shields = 0.0
+    
+    # 1. Calculate tax shields for explicit forecast period
+    if debt_schedule:
+        for year, debt_level in debt_schedule.items():
+            if debt_level > 0:
+                interest_expense = debt_level * cost_of_debt
+                tax_shield = interest_expense * corporate_tax_rate
+                
+                # Discount at unlevered cost of equity (not cost of debt)
+                if use_mid_year_convention:
+                    discount_factor = (1 + unlevered_cost_of_equity) ** (year + 0.5)
+                else:
+                    # Tax shield occurs at end of year
+                    discount_factor = (1 + unlevered_cost_of_equity) ** (year + 1)
+                
+                present_value_of_tax_shields += tax_shield / discount_factor
+        
+        # 2. Calculate terminal period tax shields (perpetuity)
+        if debt_schedule:
+            final_year = max(debt_schedule.keys())
+            final_debt = debt_schedule[final_year]
+            
+            # Terminal debt grows with enterprise value (target leverage approach)
+            # This assumes the company maintains target debt ratio in terminal period
+            terminal_tax_shield = final_debt * cost_of_debt * corporate_tax_rate
+            
+            # PV of terminal tax shield (perpetuity)
+            # Formula: Terminal Tax Shield / (Unlevered Cost of Equity - Terminal Growth Rate)
+            terminal_tax_shield_pv = terminal_tax_shield / (unlevered_cost_of_equity - terminal_growth_rate)
+            
+            # Discount terminal tax shield perpetuity to present value
+            if use_mid_year_convention:
+                discount_factor = (1 + unlevered_cost_of_equity) ** (final_year + 0.5)
+            else:
+                discount_factor = (1 + unlevered_cost_of_equity) ** (final_year + 1)
+            
+            present_value_of_terminal_tax_shields = terminal_tax_shield_pv / discount_factor
+            present_value_of_tax_shields += present_value_of_terminal_tax_shields
     
     return present_value_of_tax_shields
 
@@ -355,19 +427,21 @@ def calculate_adjusted_present_value(valuation_parameters: ValuationParameters) 
             (1 + unlevered_cost_of_equity) ** (len(unlevered_fcf_series) + 0.5)
         )
     else:
+        # Terminal value starts at end of final forecast year (year 5)
         present_value_of_terminal = terminal_value / (
-            (1 + unlevered_cost_of_equity) ** (len(unlevered_fcf_series) + 1)
+            (1 + unlevered_cost_of_equity) ** len(unlevered_fcf_series)
         )
     
     # Step 5: Calculate unlevered enterprise value
     unlevered_enterprise_value = sum(present_value_of_unlevered_fcfs) + present_value_of_terminal
     
-    # Step 6: Calculate present value of interest tax shields
-    present_value_of_tax_shields = calculate_present_value_of_tax_shields(
+    # Step 6: Calculate present value of interest tax shields (including terminal period)
+    present_value_of_tax_shields = calculate_present_value_of_tax_shields_enhanced(
         valuation_parameters.debt_schedule, 
         valuation_parameters.cost_of_debt, 
         valuation_parameters.corporate_tax_rate, 
         unlevered_cost_of_equity,
+        valuation_parameters.terminal_growth_rate,
         valuation_parameters.use_mid_year_convention
     )
     

@@ -120,7 +120,12 @@ def csv_to_json(csv_file: str) -> Dict[str, Any]:
             "use_input_wacc": csv_data.get('Use Input WACC', True),
             "use_debt_schedule": csv_data.get('Use Debt Schedule', False),
             "debt_schedule": {
-                "0": csv_data.get('Current Debt Balance', 0)
+                "0": csv_data.get('Current Debt Balance', 0),
+                "1": csv_data.get('Debt Balance Year 1', 0),
+                "2": csv_data.get('Debt Balance Year 2', 0),
+                "3": csv_data.get('Debt Balance Year 3', 0),
+                "4": csv_data.get('Debt Balance Year 4', 0),
+                "5": csv_data.get('Debt Balance Year 5', 0)
             }
         },
         "comparable_multiples": {

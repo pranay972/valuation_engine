@@ -95,7 +95,10 @@
         "peer_count": 5
       }
     },
-    "calculation_method": "Comparable Multiples"
+    "calculation_method": "Comparable Multiples",
+    "enterprise_value": 5980.5,
+    "equity_value": 5980.5,
+    "price_per_share": 132.31194690265485
   },
   "scenarios": {
     "scenarios": {
@@ -207,12 +210,12 @@
   "monte_carlo_simulation": {
     "runs": 1000,
     "wacc_method": {
-      "mean_ev": 2303.4,
-      "median_ev": 2221.9,
-      "std_dev": 537.8,
+      "mean_ev": 2296.1,
+      "median_ev": 2219.1,
+      "std_dev": 537.9,
       "confidence_interval_95": [
-        1477.3,
-        3477.3
+        1460.2,
+        3595.7
       ]
     },
     "parameter_distributions": {

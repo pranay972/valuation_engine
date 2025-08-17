@@ -6,7 +6,7 @@ Barebones comparable company multiples analysis without extra dependencies.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple
 
 from .drivers import project_ebit_series, project_free_cash_flow
 from .params import ValuationParameters
@@ -22,12 +22,14 @@ def calculate_ebitda(ebit: float, depreciation: float) -> float:
     """Calculate EBITDA = EBIT + Depreciation"""
     return ebit + depreciation
 
-def analyze_comparable_multiples(params: ValuationParameters, comps: pd.DataFrame) -> pd.DataFrame:
+def analyze_comparable_multiples(params: ValuationParameters, comps: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """
     Perform comparable multiples analysis using peer company data.
     
     Returns:
-        DataFrame with implied enterprise values by multiple type
+        Dict containing:
+            - ev_based: DataFrame with implied enterprise values by EV-based multiple type
+            - equity_based: DataFrame with implied equity values by equity-based multiple type
     """
     if comps.empty:
         raise ValueError("Comparable companies DataFrame is empty")
@@ -75,8 +77,12 @@ def analyze_comparable_multiples(params: ValuationParameters, comps: pd.DataFram
         "Revenue": revenues[-1]
     }
     
-    # 2) Apply peer multiples to our metrics
-    results = []
+    # 2) Separate EV-based and equity-based multiples
+    ev_based_multiples = ["EV/EBITDA", "EV/Revenue", "EV/FCF", "EV/Earnings"]
+    equity_based_multiples = ["P/E", "P/B", "P/S"]
+    
+    ev_results = []
+    equity_results = []
     
     for col in comps.columns:
         try:
@@ -116,37 +122,50 @@ def analyze_comparable_multiples(params: ValuationParameters, comps: pd.DataFram
             if peer_vals_filtered.empty:
                 continue
             
-            # Calculate implied enterprise values
-            implied_evs = peer_vals_filtered * our_metric
-            
-            # Calculate summary statistics
-            result = {
-                "Multiple": col,
-                "Mean Implied EV": implied_evs.mean(),
-                "Median Implied EV": implied_evs.median(),
-                "Std Dev Implied EV": implied_evs.std(),
-                "Min Implied EV": implied_evs.min(),
-                "Max Implied EV": implied_evs.max(),
-                "Peer Count": len(peer_vals_filtered),
-                "Our Metric": our_metric,
-                "Mean Multiple": peer_vals_filtered.mean()
-            }
-            
-            # Store implied EVs separately to avoid DataFrame issues
-            result["_implied_evs"] = implied_evs.tolist()
-            
-            results.append(result)
+            # Calculate implied values based on multiple type
+            if col in ev_based_multiples:
+                # EV-based multiple: produces enterprise value
+                implied_values = peer_vals_filtered * our_metric
+                result = {
+                    "Multiple": col,
+                    "Mean Implied EV": implied_values.mean(),
+                    "Median Implied EV": implied_values.median(),
+                    "Std Dev Implied EV": implied_values.std(),
+                    "Min Implied EV": implied_values.min(),
+                    "Max Implied EV": implied_values.max(),
+                    "Peer Count": len(peer_vals_filtered),
+                    "Our Metric": our_metric,
+                    "Mean Multiple": peer_vals_filtered.mean()
+                }
+                result["_implied_values"] = implied_values.tolist()
+                ev_results.append(result)
+                
+            elif col in equity_based_multiples:
+                # Equity-based multiple: produces equity value
+                implied_values = peer_vals_filtered * our_metric
+                result = {
+                    "Multiple": col,
+                    "Mean Implied Equity": implied_values.mean(),
+                    "Median Implied Equity": implied_values.median(),
+                    "Std Dev Implied Equity": implied_values.std(),
+                    "Min Implied Equity": implied_values.min(),
+                    "Max Implied Equity": implied_values.max(),
+                    "Peer Count": len(peer_vals_filtered),
+                    "Our Metric": our_metric,
+                    "Mean Multiple": peer_vals_filtered.mean()
+                }
+                result["_implied_values"] = implied_values.tolist()
+                equity_results.append(result)
             
         except Exception as e:
             # Log error but continue with other multiples
             continue
     
-    if not results:
-        raise ValueError(
-            "No valid multiples found. Please check that the comparable companies "
-            "DataFrame contains columns with format 'EV/Metric' or 'P/Metric'"
-        )
+    # 3) Return as separate DataFrames
+    ev_df = pd.DataFrame(ev_results).set_index("Multiple") if ev_results else pd.DataFrame()
+    equity_df = pd.DataFrame(equity_results).set_index("Multiple") if equity_results else pd.DataFrame()
     
-    # 3) Return as DataFrame indexed by multiple name
-    result_df = pd.DataFrame(results).set_index("Multiple")
-    return result_df 
+    return {
+        "ev_based": ev_df,
+        "equity_based": equity_df
+    } 

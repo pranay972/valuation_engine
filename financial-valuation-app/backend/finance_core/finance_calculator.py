@@ -16,7 +16,7 @@ from .wacc import calculate_weighted_average_cost_of_capital, calculate_unlevere
 from .dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
 from .multiples import analyze_comparable_multiples
 from .scenario import perform_scenario_analysis
-from .monte_carlo import simulate_monte_carlo
+from .monte_carlo import run_monte_carlo_simulation
 from .sensitivity import perform_sensitivity_analysis
 from .error_messages import create_error, validate_required_field, validate_non_negative, validate_list_consistency, FinanceCoreError
 
@@ -451,13 +451,21 @@ class FinancialValuationEngine:
             comps_df = pd.DataFrame(comps_data)
             
             # Run multiples analysis
-            results_df = analyze_comparable_multiples(params, comps_df)
+            results_dict = analyze_comparable_multiples(params, comps_df)
+            ev_results_df = results_dict.get("ev_based", pd.DataFrame())
+            equity_results_df = results_dict.get("equity_based", pd.DataFrame())
             
-            # Calculate summary statistics
+            # Calculate summary statistics for EV-based multiples
             ev_values = []
-            for multiple_name, row in results_df.iterrows():
-                if '_implied_evs' in row:
-                    ev_values.extend(row['_implied_evs'])
+            for multiple_name, row in ev_results_df.iterrows():
+                if '_implied_values' in row:
+                    ev_values.extend(row['_implied_values'])
+            
+            # Calculate summary statistics for equity-based multiples
+            equity_values = []
+            for multiple_name, row in equity_results_df.iterrows():
+                if '_implied_values' in row:
+                    equity_values.extend(row['_implied_values'])
             
             if ev_values:
                 summary = {
@@ -483,9 +491,9 @@ class FinancialValuationEngine:
                 "net_income": round(params.revenue_projections[-1] * params.ebit_margin * (1 - params.corporate_tax_rate), 1)
             }
             
-            # Calculate implied EVs by multiple type
+            # Calculate implied values by multiple type
             implied_evs_by_multiple = {}
-            for multiple_name, row in results_df.iterrows():
+            for multiple_name, row in ev_results_df.iterrows():
                 implied_evs_by_multiple[multiple_name] = {
                     "mean_implied_ev": round(row['Mean Implied EV'], 1),
                     "median_implied_ev": round(row['Median Implied EV'], 1),
@@ -494,12 +502,36 @@ class FinancialValuationEngine:
                     "peer_count": row['Peer Count']
                 }
             
-            # Calculate summary values for frontend display
-            enterprise_value = summary.get("mean_ev", 0.0)
+            implied_equity_by_multiple = {}
+            for multiple_name, row in equity_results_df.iterrows():
+                implied_equity_by_multiple[multiple_name] = {
+                    "mean_implied_equity": round(row['Mean Implied Equity'], 1),
+                    "median_implied_equity": round(row['Median Implied Equity'], 1),
+                    "our_metric": round(row['Our Metric'], 1),
+                    "mean_multiple": round(row['Mean Multiple'], 2),
+                    "peer_count": row['Peer Count']
+                }
             
-            # For multiples analysis, equity value is typically enterprise value minus net debt
-            # Since we don't have detailed debt info, we'll use a simplified approach
-            equity_value = enterprise_value  # Assume minimal debt for relative valuation
+            # Calculate summary values for frontend display
+            # Handle EV-based and equity-based multiples separately
+            if ev_values and equity_values:
+                # We have both types - use EV-based for enterprise value, equity-based for equity value
+                enterprise_value = summary.get("mean_ev", 0.0)
+                equity_value = np.mean(equity_values) if equity_values else 0.0
+            elif ev_values:
+                # Only EV-based multiples - calculate equity value by subtracting net debt
+                enterprise_value = summary.get("mean_ev", 0.0)
+                net_debt = params.debt_schedule.get(0, 0.0) - params.cash_balance if hasattr(params, 'cash_balance') else 0.0
+                equity_value = enterprise_value - net_debt
+            elif equity_values:
+                # Only equity-based multiples - calculate enterprise value by adding net debt
+                equity_value = np.mean(equity_values) if equity_values else 0.0
+                net_debt = params.debt_schedule.get(0, 0.0) - params.cash_balance if hasattr(params, 'cash_balance') else 0.0
+                enterprise_value = equity_value + net_debt
+            else:
+                # No valid multiples
+                enterprise_value = 0.0
+                equity_value = 0.0
             
             # Calculate price per share
             price_per_share = None
@@ -510,6 +542,7 @@ class FinancialValuationEngine:
                 "ev_multiples": summary,
                 "base_metrics_used": base_metrics,
                 "implied_evs_by_multiple": implied_evs_by_multiple,
+                "implied_equity_by_multiple": implied_equity_by_multiple,
                 "calculation_method": "Comparable Multiples",
                 "enterprise_value": enterprise_value,
                 "equity_value": equity_value,
@@ -700,22 +733,21 @@ class FinancialValuationEngine:
                 raise create_error("INVALID_MONTE_CARLO_SPECS", reason="No Monte Carlo specifications provided")
             
             params = self._convert_to_valuation_params(inputs)
-            results = simulate_monte_carlo(params, runs=runs)
+            results = run_monte_carlo_simulation(params, inputs.monte_carlo_specs, runs)
             
-            # Process WACC method results
+            # Process results from new Monte Carlo function
             wacc_stats = {}
-            if "WACC" in results and not results["WACC"].empty:
-                ev_values = results["WACC"]["EV"].dropna()
-                if not ev_values.empty:
-                    wacc_stats = {
-                        "mean_ev": round(ev_values.mean(), 1),
-                        "median_ev": round(ev_values.median(), 1),
-                        "std_dev": round(ev_values.std(), 1),
-                        "confidence_interval_95": [
-                            round(ev_values.quantile(0.025), 1),
-                            round(ev_values.quantile(0.975), 1)
-                        ]
-                    }
+            if "enterprise_value" in results:
+                ev_data = results["enterprise_value"]
+                wacc_stats = {
+                    "mean_ev": round(ev_data["mean"], 1),
+                    "median_ev": round(ev_data["median"], 1),
+                    "std_dev": round(ev_data["std_dev"], 1),
+                    "confidence_interval_95": [
+                        round(ev_data["percentiles"]["10th"], 1),
+                        round(ev_data["percentiles"]["90th"], 1)
+                    ]
+                }
             
             return {
                 "runs": runs,
@@ -944,7 +976,7 @@ def main():
         # Generate output filename if not provided
         if output_file is None:
             base_name = os.path.splitext(os.path.basename(input_file))[0]
-            output_file = f"{base_name}_valuation_results.json"
+            output_file = f"{base_name}_results.json"
         
         # Save results to JSON file
         with open(output_file, 'w') as f:

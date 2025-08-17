@@ -212,14 +212,15 @@ def calculate_levered_cost_of_equity(
 
 def calculate_iterative_wacc(valuation_parameters: "ValuationParameters", max_iterations: int = 3) -> float:
     """
-    Calculate WACC iteratively to resolve circular dependency issues.
+    Calculate WACC from components when use_input_wacc = False.
     
-    This function implements a professional approach to WACC calculation that prioritizes
-    target capital structure methodology over iterative market value approaches.
+    This function calculates WACC using the target capital structure approach,
+    which is the preferred method in professional valuation practice as it avoids
+    circular dependency issues.
     
     Calculation Priority:
     1. Use target capital structure approach if target_debt_to_value_ratio is provided
-    2. Use provided WACC if available
+    2. Calculate from levered cost of equity using CAPM if available
     3. Fall back to simple calculation using estimated market values
     
     Args:
@@ -230,10 +231,10 @@ def calculate_iterative_wacc(valuation_parameters: "ValuationParameters", max_it
         float: Calculated WACC as decimal
         
     Note:
-        The iterative approach is simplified to prioritize target capital structure
-        methodology, which is more common in professional practice.
+        When use_input_wacc = False, this function ignores the weighted_average_cost_of_capital
+        field and calculates WACC purely from component inputs.
     """
-    # Priority 1: Use target capital structure approach
+    # Priority 1: Use target capital structure approach (preferred method)
     if valuation_parameters.target_debt_to_value_ratio > 0:
         cost_of_equity = valuation_parameters.calculate_levered_cost_of_equity()
         return calculate_wacc_target_capital_structure(
@@ -243,9 +244,17 @@ def calculate_iterative_wacc(valuation_parameters: "ValuationParameters", max_it
             valuation_parameters.corporate_tax_rate
         )
     
-    # Priority 2: Use provided WACC if available
-    if valuation_parameters.weighted_average_cost_of_capital > 0:
-        return valuation_parameters.weighted_average_cost_of_capital
+    # Priority 2: Calculate from levered cost of equity using CAPM
+    if valuation_parameters.levered_beta > 0:
+        cost_of_equity = valuation_parameters.calculate_levered_cost_of_equity()
+        # Use estimated debt ratio if target not provided
+        estimated_debt_ratio = 0.3  # Default to 30% if not specified
+        return calculate_wacc_target_capital_structure(
+            estimated_debt_ratio,
+            cost_of_equity,
+            valuation_parameters.cost_of_debt,
+            valuation_parameters.corporate_tax_rate
+        )
     
     # Priority 3: Fallback to simple calculation using estimated market values
     estimated_equity_value = (
