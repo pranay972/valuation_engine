@@ -193,8 +193,9 @@ def calculate_dcf_valuation_wacc(valuation_parameters: ValuationParameters) -> T
         )
     else:
         # Terminal value starts at end of year after last forecast
+        # For n forecast periods, terminal value should be discounted by (1 + WACC)^n
         present_value_of_terminal = terminal_value / (
-            (1 + weighted_average_cost_of_capital) ** (len(free_cash_flow_series) + 1)
+            (1 + weighted_average_cost_of_capital) ** len(free_cash_flow_series)
         )
 
     # Step 5: Calculate enterprise value
@@ -355,8 +356,9 @@ def calculate_adjusted_present_value(valuation_parameters: ValuationParameters) 
             (1 + unlevered_cost_of_equity) ** (len(unlevered_fcf_series) + 0.5)
         )
     else:
+        # For n forecast periods, terminal value should be discounted by (1 + unlevered_cost_of_equity)^n
         present_value_of_terminal = terminal_value / (
-            (1 + unlevered_cost_of_equity) ** (len(unlevered_fcf_series) + 1)
+            (1 + unlevered_cost_of_equity) ** len(unlevered_fcf_series)
         )
     
     # Step 5: Calculate unlevered enterprise value
