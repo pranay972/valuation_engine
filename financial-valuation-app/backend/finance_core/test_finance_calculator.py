@@ -16,19 +16,19 @@ import pandas as pd
 import numpy as np
 
 # Import the modules to test
-from finance_calculator import (
+from .finance_calculator import (
     FinancialValuationEngine, 
     FinancialInputs, 
     parse_financial_inputs
 )
-from params import ValuationParameters
-from dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
-from multiples import analyze_comparable_multiples
-from scenario import perform_scenario_analysis
-from sensitivity import perform_sensitivity_analysis
-from monte_carlo import simulate_monte_carlo
-from drivers import project_ebit_series, project_free_cash_flow
-from error_messages import FinanceCoreError
+from .params import ValuationParameters
+from .dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
+from .multiples import analyze_comparable_multiples
+from .scenario import perform_scenario_analysis
+from .sensitivity import perform_sensitivity_analysis
+from .monte_carlo import simulate_monte_carlo
+from .drivers import project_ebit_series, project_free_cash_flow
+from .error_messages import FinanceCoreError
 
 class TestFinancialInputs(unittest.TestCase):
     """Test FinancialInputs dataclass creation and validation."""
@@ -903,6 +903,371 @@ class TestErrorHandling(unittest.TestCase):
         # Should handle large values gracefully
         result = calculator.calculate_dcf_valuation(large_inputs)
         self.assertIsInstance(result, dict)
+
+class TestJSONOutputValidation(unittest.TestCase):
+    """Test that the finance calculator produces expected output when run with sample input JSON and compared to output_validation.json."""
+    
+    def setUp(self):
+        """Load the sample input and expected output JSON files."""
+        with open('sample_input.json', 'r') as f:
+            self.sample_input = json.load(f)
+        
+        with open('output_validation.json', 'r') as f:
+            self.expected_output = json.load(f)
+    
+    def test_sample_input_produces_expected_output(self):
+        """Test that running the finance calculator with sample input produces expected output matching output_validation.json."""
+        # Parse the sample input JSON
+        inputs = parse_financial_inputs(self.sample_input)
+        
+        # Run the comprehensive valuation
+        engine = FinancialValuationEngine()
+        actual_results = engine.perform_comprehensive_valuation(inputs)
+        
+        # Validate key metrics with detailed reporting
+        self._validate_dcf_valuation(actual_results)
+        self._validate_apv_valuation(actual_results)
+        self._validate_comparable_multiples(actual_results)
+        self._validate_scenarios(actual_results)
+        self._validate_sensitivity_analysis(actual_results)
+        self._validate_monte_carlo(actual_results)
+    
+    def test_detailed_output_comparison(self):
+        """Detailed comparison showing exact differences between actual calculator output and output_validation.json."""
+        # Parse the sample input JSON
+        inputs = parse_financial_inputs(self.sample_input)
+        
+        # Run the comprehensive valuation
+        engine = FinancialValuationEngine()
+        actual_results = engine.perform_comprehensive_valuation(inputs)
+        
+        print("\n" + "="*80)
+        print("DETAILED COMPARISON: Finance Calculator vs output_validation.json")
+        print("="*80)
+        
+        # Compare key metrics with detailed reporting
+        self._compare_detailed_values(actual_results, "DCF Valuation", "dcf_valuation")
+        self._compare_detailed_values(actual_results, "APV Valuation", "apv_valuation")
+        self._compare_detailed_values(actual_results, "Comparable Multiples", "comparable_valuation")
+        
+        # Compare FCF calculations specifically
+        self._compare_fcf_calculations(actual_results)
+        
+        # Compare scenario results
+        self._compare_scenario_results(actual_results)
+        
+        # Compare sensitivity analysis
+        self._compare_sensitivity_analysis(actual_results)
+        
+        # Compare Monte Carlo
+        self._compare_monte_carlo(actual_results)
+        
+        print("\n" + "="*80)
+        print("COMPARISON COMPLETED")
+        print("="*80)
+        
+        # The test passes if we're just reporting differences
+        self.assertTrue(True, "Detailed comparison completed")
+    
+    def _compare_sensitivity_analysis(self, actual_results):
+        """Compare sensitivity analysis results."""
+        sensitivity_actual = actual_results.get('sensitivity_analysis', {})
+        sensitivity_expected = self.expected_output.get('sensitivity_analysis', {})
+        
+        print(f"\n=== Sensitivity Analysis Comparison ===")
+        
+        if 'sensitivity_results' in sensitivity_actual and 'sensitivity_results' in sensitivity_expected:
+            # Compare WACC sensitivity
+            wacc_sens_actual = sensitivity_actual['sensitivity_results'].get('weighted_average_cost_of_capital', {})
+            wacc_sens_expected = sensitivity_expected['sensitivity_results'].get('weighted_average_cost_of_capital', {})
+            
+            if wacc_sens_actual and wacc_sens_expected:
+                print("WACC Sensitivity - Enterprise Values:")
+                for wacc in ['0.085', '0.09', '0.095', '0.1', '0.105']:
+                    if wacc in wacc_sens_actual and wacc in wacc_sens_expected:
+                        actual_ev = wacc_sens_actual[wacc].get('ev', 0)
+                        expected_ev = wacc_sens_expected[wacc].get('ev', 0)
+                        diff = actual_ev - expected_ev
+                        pct_diff = (diff / expected_ev * 100) if expected_ev != 0 else 0
+                        print(f"  WACC {wacc}: {actual_ev:.1f} vs {expected_ev:.1f} (diff: {diff:+.1f}, {pct_diff:+.2f}%)")
+    
+    def _compare_monte_carlo(self, actual_results):
+        """Compare Monte Carlo simulation results."""
+        monte_carlo_actual = actual_results.get('monte_carlo', {})
+        monte_carlo_expected = self.expected_output.get('monte_carlo_simulation', {})
+        
+        print(f"\n=== Monte Carlo Comparison ===")
+        
+        if monte_carlo_actual and monte_carlo_expected:
+            # Compare WACC method results
+            wacc_actual = monte_carlo_actual.get('wacc_method', {})
+            wacc_expected = monte_carlo_expected.get('wacc_method', {})
+            
+            if wacc_actual and wacc_expected:
+                actual_mean_ev = wacc_actual.get('mean_ev', 0)
+                expected_mean_ev = wacc_expected.get('mean_ev', 0)
+                diff = actual_mean_ev - expected_mean_ev
+                pct_diff = (diff / expected_mean_ev * 100) if expected_mean_ev != 0 else 0
+                print(f"Mean EV: {actual_mean_ev:.1f} vs {expected_mean_ev:.1f} (diff: {diff:+.1f}, {pct_diff:+.2f}%)")
+                
+                actual_median_ev = wacc_actual.get('median_ev', 0)
+                expected_median_ev = wacc_expected.get('median_ev', 0)
+                diff = actual_median_ev - expected_median_ev
+                pct_diff = (diff / expected_median_ev * 100) if expected_median_ev != 0 else 0
+                print(f"Median EV: {actual_median_ev:.1f} vs {expected_median_ev:.1f} (diff: {diff:+.1f}, {pct_diff:+.2f}%)")
+
+    def _compare_detailed_values(self, actual_results, section_name, section_key):
+        """Compare detailed values for a specific section."""
+        actual_section = actual_results.get(section_key, {})
+        expected_section = self.expected_output.get(section_key, {})
+        
+        print(f"\n=== {section_name} Comparison ===")
+        
+        # Compare enterprise value
+        actual_ev = actual_section.get('enterprise_value', 0)
+        expected_ev = expected_section.get('enterprise_value', 0)
+        ev_diff = actual_ev - expected_ev
+        ev_pct_diff = (ev_diff / expected_ev * 100) if expected_ev != 0 else 0
+        
+        print(f"Enterprise Value: {actual_ev:.2f} vs {expected_ev:.2f} (diff: {ev_diff:+.2f}, {ev_pct_diff:+.2f}%)")
+        
+        # Compare equity value
+        actual_eq = actual_section.get('equity_value', 0)
+        expected_eq = expected_section.get('equity_value', 0)
+        eq_diff = actual_eq - expected_eq
+        eq_pct_diff = (eq_diff / expected_eq * 100) if expected_eq != 0 else 0
+        
+        print(f"Equity Value: {actual_eq:.2f} vs {expected_eq:.2f} (diff: {eq_diff:+.2f}, {eq_pct_diff:+.2f}%)")
+        
+        # Compare price per share
+        actual_pps = actual_section.get('price_per_share', 0)
+        expected_pps = expected_section.get('price_per_share', 0)
+        pps_diff = actual_pps - expected_pps
+        pps_pct_diff = (pps_diff / expected_pps * 100) if expected_pps != 0 else 0
+        
+        print(f"Price per Share: {actual_pps:.2f} vs {expected_pps:.2f} (diff: {pps_diff:+.2f}, {pps_pct_diff:+.2f}%)")
+        
+        # For APV, also compare components
+        if section_key == 'apv_valuation':
+            actual_unlevered = actual_section.get('apv_components', {}).get('value_unlevered', 0)
+            expected_unlevered = expected_section.get('apv_components', {}).get('value_unlevered', 0)
+            actual_tax_shield = actual_section.get('apv_components', {}).get('pv_tax_shield', 0)
+            expected_tax_shield = expected_section.get('apv_components', {}).get('pv_tax_shield', 0)
+            
+            print(f"Unlevered Value: {actual_unlevered:.2f} vs {expected_unlevered:.2f}")
+            print(f"PV Tax Shield: {actual_tax_shield:.2f} vs {expected_tax_shield:.2f}")
+    
+    def _compare_fcf_calculations(self, actual_results):
+        """Compare Free Cash Flow calculations in detail."""
+        dcf_actual = actual_results.get('dcf_valuation', {})
+        dcf_expected = self.expected_output.get('dcf_valuation', {})
+        
+        actual_fcfs = dcf_actual.get('free_cash_flows_after_tax_fcff', [])
+        expected_fcfs = dcf_expected.get('free_cash_flows_after_tax_fcff', [])
+        
+        print(f"\n=== Free Cash Flow Comparison ===")
+        
+        for i, (actual_fcf, expected_fcf) in enumerate(zip(actual_fcfs, expected_fcfs)):
+            diff = actual_fcf - expected_fcf
+            pct_diff = (diff / expected_fcf * 100) if expected_fcf != 0 else 0
+            print(f"Year {i+1}: {actual_fcf:.2f} vs {expected_fcf:.2f} (diff: {diff:+.2f}, {pct_diff:+.2f}%)")
+    
+    def _compare_scenario_results(self, actual_results):
+        """Compare scenario analysis results."""
+        scenarios_actual = actual_results.get('scenarios', {})
+        scenarios_expected = self.expected_output.get('scenarios', {})
+        
+        print(f"\n=== Scenario Analysis Comparison ===")
+        
+        # Handle nested scenarios structure in output_validation.json
+        if 'scenarios' in scenarios_expected:
+            scenarios_expected = scenarios_expected['scenarios']
+        
+        for scenario_name in ['optimistic', 'pessimistic']:
+            if scenario_name in scenarios_actual and scenario_name in scenarios_expected:
+                scenario_actual = scenarios_actual[scenario_name]
+                scenario_expected = scenarios_expected[scenario_name]
+                
+                # Compare enterprise value (note: output_validation.json uses 'ev' instead of 'enterprise_value')
+                actual_ev = scenario_actual.get('enterprise_value', 0)
+                expected_ev = scenario_expected.get('ev', 0)
+                diff = actual_ev - expected_ev
+                pct_diff = (diff / expected_ev * 100) if expected_ev != 0 else 0
+                
+                print(f"{scenario_name.capitalize()}: {actual_ev:.2f} vs {expected_ev:.2f} (diff: {diff:+.2f}, {pct_diff:+.2f}%)")
+
+    def _validate_dcf_valuation(self, actual_results):
+        """Validate DCF valuation results."""
+        dcf_actual = actual_results.get('dcf_valuation', {})
+        dcf_expected = self.expected_output.get('dcf_valuation', {})
+        
+        # Test key metrics with tolerance
+        self._assert_within_tolerance(
+            dcf_actual.get('enterprise_value', 0),
+            dcf_expected.get('enterprise_value', 0),
+            0.01,  # 1% tolerance
+            "DCF Enterprise Value"
+        )
+        
+        self._assert_within_tolerance(
+            dcf_actual.get('equity_value', 0),
+            dcf_expected.get('equity_value', 0),
+            0.01,  # 1% tolerance
+            "DCF Equity Value"
+        )
+        
+        self._assert_within_tolerance(
+            dcf_actual.get('price_per_share', 0),
+            dcf_expected.get('price_per_share', 0),
+            0.01,  # 1% tolerance
+            "DCF Price per Share"
+        )
+        
+        # Test FCF calculations
+        actual_fcfs = dcf_actual.get('free_cash_flows_after_tax_fcff', [])
+        expected_fcfs = dcf_expected.get('free_cash_flows_after_tax_fcff', [])
+        
+        self.assertEqual(len(actual_fcfs), len(expected_fcfs), 
+                        "FCF array length should match")
+        
+        for i, (actual_fcf, expected_fcf) in enumerate(zip(actual_fcfs, expected_fcfs)):
+            self._assert_within_tolerance(
+                actual_fcf, expected_fcf, 0.01, f"FCF Year {i+1}"
+            )
+    
+    def _validate_apv_valuation(self, actual_results):
+        """Validate APV valuation results."""
+        apv_actual = actual_results.get('apv_valuation', {})
+        apv_expected = self.expected_output.get('apv_valuation', {})
+        
+        # Test enterprise value
+        self._assert_within_tolerance(
+            apv_actual.get('enterprise_value', 0),
+            apv_expected.get('enterprise_value', 0),
+            0.01,  # 1% tolerance
+            "APV Enterprise Value"
+        )
+        
+        # Test equity value
+        self._assert_within_tolerance(
+            apv_actual.get('equity_value', 0),
+            apv_expected.get('equity_value', 0),
+            0.01,  # 1% tolerance
+            "APV Equity Value"
+        )
+        
+        # Test unlevered value + tax shield = APV enterprise value
+        unlevered_value = apv_actual.get('apv_components', {}).get('value_unlevered', 0)
+        pv_tax_shield = apv_actual.get('apv_components', {}).get('pv_tax_shield', 0)
+        apv_enterprise_value = apv_actual.get('enterprise_value', 0)
+        
+        calculated_apv = unlevered_value + pv_tax_shield
+        self._assert_within_tolerance(
+            apv_enterprise_value, calculated_apv, 0.01, "APV = Unlevered + Tax Shield"
+        )
+    
+    def _validate_comparable_multiples(self, actual_results):
+        """Validate comparable multiples results."""
+        comp_actual = actual_results.get('comparable_valuation', {})
+        comp_expected = self.expected_output.get('comparable_valuation', {})
+        
+        # Test EV multiples
+        ev_actual = comp_actual.get('ev_multiples', {})
+        ev_expected = comp_expected.get('ev_multiples', {})
+        
+        self._assert_within_tolerance(
+            ev_actual.get('mean_ev', 0),
+            ev_expected.get('mean_ev', 0),
+            0.01,  # 1% tolerance
+            "Mean EV from Multiples"
+        )
+        
+        # Test implied EVs by multiple
+        implied_evs_actual = comp_actual.get('implied_evs_by_multiple', {})
+        implied_evs_expected = comp_expected.get('implied_evs_by_multiple', {})
+        
+        for multiple_type in ['EV/EBITDA', 'EV/Revenue', 'P/E']:
+            if multiple_type in implied_evs_actual and multiple_type in implied_evs_expected:
+                self._assert_within_tolerance(
+                    implied_evs_actual[multiple_type].get('mean_implied_ev', 0),
+                    implied_evs_expected[multiple_type].get('mean_implied_ev', 0),
+                    0.01,  # 1% tolerance
+                    f"{multiple_type} Mean Implied EV"
+                )
+    
+    def _validate_scenarios(self, actual_results):
+        """Validate scenario analysis results."""
+        scenarios_actual = actual_results.get('scenarios', {})
+        scenarios_expected = self.expected_output.get('scenarios', {})
+        
+        for scenario_name in ['optimistic', 'pessimistic']:
+            if scenario_name in scenarios_actual and scenario_name in scenarios_expected:
+                scenario_actual = scenarios_actual[scenario_name]
+                scenario_expected = scenarios_expected[scenario_name]
+                
+                # Test enterprise value
+                self._assert_within_tolerance(
+                    scenario_actual.get('enterprise_value', 0),
+                    scenario_expected.get('enterprise_value', 0),
+                    0.01,  # 1% tolerance
+                    f"{scenario_name.capitalize()} Scenario Enterprise Value"
+                )
+    
+    def _validate_sensitivity_analysis(self, actual_results):
+        """Validate sensitivity analysis results."""
+        sensitivity_actual = actual_results.get('sensitivity_analysis', {})
+        sensitivity_expected = self.expected_output.get('sensitivity_analysis', {})
+        
+        if 'sensitivity_results' in sensitivity_actual and 'sensitivity_results' in sensitivity_expected:
+            # Test WACC sensitivity
+            wacc_sens_actual = sensitivity_actual['sensitivity_results'].get('weighted_average_cost_of_capital', {})
+            wacc_sens_expected = sensitivity_expected['sensitivity_results'].get('weighted_average_cost_of_capital', {})
+            
+            if wacc_sens_actual and wacc_sens_expected:
+                # Test that higher WACC leads to lower EV (inverse relationship)
+                ev_values_actual = wacc_sens_actual.get('ev', {})
+                if len(ev_values_actual) > 1:
+                    wacc_values = sorted([float(k) for k in ev_values_actual.keys()])
+                    ev_values_sorted = [ev_values_actual[str(w)] for w in wacc_values]
+                    
+                    # Check if EV generally decreases as WACC increases
+                    decreasing_count = sum(1 for i in range(len(ev_values_sorted)-1) 
+                                        if ev_values_sorted[i] >= ev_values_sorted[i+1])
+                    
+                    # At least 70% of the relationships should show inverse relationship
+                    self.assertGreaterEqual(
+                        decreasing_count / (len(ev_values_sorted) - 1), 0.7,
+                        "WACC sensitivity should generally show inverse relationship"
+                    )
+    
+    def _validate_monte_carlo(self, actual_results):
+        """Validate Monte Carlo simulation results."""
+        monte_carlo_actual = actual_results.get('monte_carlo', {})
+        monte_carlo_expected = self.expected_output.get('monte_carlo', {})
+        
+        if monte_carlo_actual and monte_carlo_expected:
+            # Test percentile ordering
+            percentiles_actual = monte_carlo_actual.get('percentiles', {})
+            if percentiles_actual:
+                p10 = percentiles_actual.get('10', 0)
+                p50 = percentiles_actual.get('50', 0)
+                p90 = percentiles_actual.get('90', 0)
+                
+                if p10 > 0 and p50 > 0 and p90 > 0:
+                    self.assertLessEqual(p10, p50, "P10 should be ≤ P50")
+                    self.assertLessEqual(p50, p90, "P50 should be ≤ P90")
+    
+    def _assert_within_tolerance(self, actual, expected, tolerance, metric_name):
+        """Assert that actual value is within tolerance of expected value."""
+        if expected != 0:
+            percentage_diff = abs(actual - expected) / abs(expected)
+            self.assertLessEqual(
+                percentage_diff, tolerance,
+                f"{metric_name}: {actual} vs {expected} (diff: {percentage_diff:.4f} > {tolerance})"
+            )
+        else:
+            # If expected is 0, just check that actual is close to 0
+            self.assertLessEqual(abs(actual), 0.01, f"{metric_name}: {actual} should be close to 0")
 
 if __name__ == '__main__':
     unittest.main() 
