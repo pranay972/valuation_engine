@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Union, Tuple
 
-from .drivers import project_ebit_series, project_free_cash_flow
-from .params import ValuationParameters
+from drivers import project_ebit_series, project_free_cash_flow
+from params import ValuationParameters
 
 def calculate_net_income(ebit: float, debt: float, cost_of_debt: float, tax_rate: float) -> float:
     """Calculate Net Income for P/E ratio."""

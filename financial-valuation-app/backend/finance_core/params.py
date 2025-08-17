@@ -99,8 +99,8 @@ class ValuationParameters:
             if param_value < 0:
                 raise ValueError(f"{param_name} cannot be negative: {param_value}")
         
-        # Validate WACC consistency when using input WACC
-        if self.use_input_wacc and self.weighted_average_cost_of_capital > 0:
+        # WACC handling - only validate when explicitly requested
+        if self.use_input_wacc == "validate" and self.weighted_average_cost_of_capital > 0:
             self._validate_wacc_consistency()
     
     def _validate_wacc_consistency(self):
@@ -276,4 +276,34 @@ class ValuationParameters:
             debt_weight * self.cost_of_debt * (1 - self.corporate_tax_rate)
         )
         
-        return wacc 
+        return wacc
+    
+    def resolve_wacc(self) -> float:
+        """
+        Simple WACC resolution based on configuration.
+        
+        Args:
+            use_input_wacc: True to use direct WACC input, False to calculate from components
+            
+        Returns:
+            float: Resolved WACC value for calculations
+            
+        Raises:
+            ValueError: If no valid WACC can be determined
+        """
+        if self.use_input_wacc is True:
+            # Use direct WACC input
+            if self.weighted_average_cost_of_capital > 0:
+                return self.weighted_average_cost_of_capital
+            else:
+                raise ValueError("Direct WACC requested but no value provided")
+        
+        elif self.use_input_wacc is False:
+            # Calculate from components
+            try:
+                return self.calculate_wacc_from_components()
+            except Exception as e:
+                raise ValueError(f"Unable to calculate WACC from components: {str(e)}")
+        
+        else:
+            raise ValueError(f"Invalid use_input_wacc value: {self.use_input_wacc}. Use True or False") 

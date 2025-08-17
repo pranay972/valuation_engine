@@ -26,7 +26,7 @@
     "debt_schedule": {
       "0": 150.0
     },
-    "use_input_wacc": true,
+    "use_input_wacc": false,
     "use_debt_schedule": false
   },
   "comparable_multiples": {

@@ -16,9 +16,9 @@ Key Functions:
 from typing import Tuple, Optional, Dict, List
 import numpy as np
 
-from .drivers import project_ebit_series, project_free_cash_flow
-from .params import ValuationParameters
-from .wacc import calculate_unlevered_cost_of_equity, calculate_iterative_wacc
+from drivers import project_ebit_series, project_free_cash_flow
+from params import ValuationParameters
+from wacc import calculate_unlevered_cost_of_equity, calculate_iterative_wacc
 
 def calculate_net_debt_for_valuation(valuation_parameters: ValuationParameters) -> float:
     """
@@ -153,12 +153,11 @@ def calculate_dcf_valuation_wacc(valuation_parameters: ValuationParameters) -> T
     if not free_cash_flow_series:
         raise ValueError("No free cash flow series available for valuation")
     
-    # Step 2: Calculate WACC using target capital structure or iterative approach
-    # Step 2: Calculate WACC using configuration
-    if valuation_parameters.use_input_wacc:
-        weighted_average_cost_of_capital = valuation_parameters.weighted_average_cost_of_capital
-    else:
-        weighted_average_cost_of_capital = calculate_iterative_wacc(valuation_parameters)
+    # Step 2: Smart WACC resolution
+    try:
+        weighted_average_cost_of_capital = valuation_parameters.resolve_wacc()
+    except Exception as e:
+        raise ValueError(f"WACC resolution failed: {str(e)}")
     
     # Step 3: Discount each FCF to present value
     if valuation_parameters.use_mid_year_convention:

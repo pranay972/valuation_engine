@@ -8,8 +8,8 @@ import pandas as pd
 from copy import deepcopy
 from typing import Dict, List, Any
 
-from .params import ValuationParameters
-from .dcf import calculate_dcf_valuation_wacc
+from params import ValuationParameters
+from dcf import calculate_dcf_valuation_wacc
 
 def create_parameter_copy(params: ValuationParameters) -> ValuationParameters:
     """Create a copy of parameters for sensitivity analysis."""

@@ -7,10 +7,11 @@ including proper error handling and validation of simulation parameters.
 
 import numpy as np
 import pandas as pd
+import copy
 from typing import Dict, List, Any, Tuple, Optional
-from .params import ValuationParameters
-from .dcf import calculate_dcf_valuation_wacc
-from .error_messages import create_error
+from params import ValuationParameters
+from dcf import calculate_dcf_valuation_wacc
+from error_messages import create_error
 
 def validate_monte_carlo_parameters(params: ValuationParameters, 
                                   monte_carlo_specs: Dict[str, Any]) -> None:
@@ -96,7 +97,7 @@ def run_monte_carlo_simulation(params: ValuationParameters,
         for i in range(num_simulations):
             try:
                 # Create copy of parameters for this simulation
-                sim_params = params.copy()
+                sim_params = copy.deepcopy(params)
                 
                 # Generate random values for each parameter
                 for field, spec in monte_carlo_specs.items():
@@ -135,10 +136,10 @@ def run_monte_carlo_simulation(params: ValuationParameters,
                 # Run DCF valuation
                 result = calculate_dcf_valuation_wacc(sim_params)
                 
-                # Extract values
-                ev = result.get('enterprise_value', 0)
-                equity = result.get('equity_value', 0)
-                pps = result.get('price_per_share', 0)
+                # Extract values from tuple: (enterprise_value, equity_value, price_per_share, fcf_series, terminal_value, pv_terminal)
+                ev = result[0] if len(result) > 0 else 0
+                equity = result[1] if len(result) > 1 else 0
+                pps = result[2] if len(result) > 2 else 0
                 
                 # Only accept reasonable results
                 if (ev > 0 and ev < 1e12 and  # Reasonable EV bounds

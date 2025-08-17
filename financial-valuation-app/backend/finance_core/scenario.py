@@ -8,8 +8,8 @@ import pandas as pd
 from copy import deepcopy
 from typing import Dict, Any, List
 
-from .params import ValuationParameters
-from .dcf import calculate_dcf_valuation_wacc
+from params import ValuationParameters
+from dcf import calculate_dcf_valuation_wacc
 
 def perform_scenario_analysis(params: ValuationParameters) -> pd.DataFrame:
     """

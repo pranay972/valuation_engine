@@ -21,14 +21,9 @@ from finance_calculator import (
     FinancialInputs, 
     parse_financial_inputs
 )
-from params import ValuationParameters
-from dcf import calculate_dcf_valuation_wacc, calculate_adjusted_present_value
-from multiples import analyze_comparable_multiples
-from scenario import perform_scenario_analysis
-from sensitivity import perform_sensitivity_analysis
-from monte_carlo import simulate_monte_carlo
-from drivers import project_ebit_series, project_free_cash_flow
 from error_messages import FinanceCoreError
+from params import ValuationParameters
+# Note: Other imports are handled within finance_calculator module
 
 class TestFinancialInputs(unittest.TestCase):
     """Test FinancialInputs dataclass creation and validation."""
@@ -53,7 +48,8 @@ class TestFinancialInputs(unittest.TestCase):
             'market_risk_premium': 0.06,
             'levered_beta': 1.0,
             'unlevered_beta': 0.8,
-            'target_debt_ratio': 0.3
+            'target_debt_ratio': 0.3,
+            'use_input_wacc': False  # Calculate WACC from components
         }
         defaults.update(kwargs)
         return FinancialInputs(**defaults)
@@ -108,7 +104,8 @@ class TestFinancialValuationEngine(unittest.TestCase):
             'market_risk_premium': 0.06,
             'levered_beta': 1.0,
             'unlevered_beta': 0.8,
-            'target_debt_ratio': 0.3
+            'target_debt_ratio': 0.3,
+            'use_input_wacc': False  # Calculate WACC from components
         }
         defaults.update(kwargs)
         return FinancialInputs(**defaults)
