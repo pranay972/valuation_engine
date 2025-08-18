@@ -131,8 +131,11 @@ class FinancialValuationEngine:
             
             # Convert debt schedule keys to integers if needed
             debt_schedule = inputs.debt_schedule
-            if debt_schedule and isinstance(next(iter(debt_schedule.keys())), str):
-                debt_schedule = {int(k): v for k, v in debt_schedule.items()}
+            if debt_schedule and isinstance(debt_schedule, dict) and len(debt_schedule) > 0:
+                # Check if keys are strings and convert to integers
+                first_key = next(iter(debt_schedule.keys()))
+                if isinstance(first_key, str):
+                    debt_schedule = {int(k): v for k, v in debt_schedule.items()}
             
             # Create ValuationParameters object
             params = ValuationParameters(
@@ -874,8 +877,11 @@ def parse_financial_inputs(data: Dict[str, Any]) -> FinancialInputs:
     
     # Convert debt_schedule from string keys to integer keys if needed
     debt_schedule = financial_data.get("debt_schedule", {})
-    if debt_schedule and isinstance(next(iter(debt_schedule.keys())), str):
-        debt_schedule = {int(k): v for k, v in debt_schedule.items()}
+    if debt_schedule and isinstance(debt_schedule, dict) and len(debt_schedule) > 0:
+        # Check if keys are strings and convert to integers
+        first_key = next(iter(debt_schedule.keys()))
+        if isinstance(first_key, str):
+            debt_schedule = {int(k): v for k, v in debt_schedule.items()}
     
     # Extract cost of capital parameters
     cost_of_capital = financial_data.get("cost_of_capital", {})

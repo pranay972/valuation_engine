@@ -13,34 +13,15 @@ logger = logging.getLogger(__name__)
 _original_sys_path = sys.path.copy()
 
 def _import_finance_core():
-    """Import finance core modules with proper path management and error handling"""
+    """Import finance core modules from backend finance_core directory only"""
     try:
-        # Try importing from the current finance_core directory first
+        # Import from the backend finance_core directory
         from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
-        logger.info("Successfully imported finance_calculator from current finance_core")
+        logger.info("Successfully imported finance_calculator from backend finance_core")
         return FinancialValuationEngine, FinancialInputs
     except ImportError as e:
-        logger.warning(f"Could not import from current finance_core: {e}")
-        try:
-            # Try importing from the backend finance_core directory
-            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'finance_core'))
-            from finance_calculator import FinancialValuationEngine, FinancialInputs
-            logger.info("Successfully imported finance_calculator from backend finance_core")
-            return FinancialValuationEngine, FinancialInputs
-        except ImportError as e2:
-            logger.warning(f"Could not import from backend finance_core: {e2}")
-            try:
-                # Try importing from the parent directory
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-                from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
-                logger.info("Successfully imported finance_calculator from parent directory")
-                return FinancialValuationEngine, FinancialInputs
-            except ImportError as e3:
-                logger.error(f"Failed to import finance_calculator from all paths: {e3}")
-                return None, None
-        finally:
-            # Restore original sys.path to prevent corruption
-            sys.path = _original_sys_path.copy()
+        logger.error(f"Failed to import finance_calculator from backend finance_core: {e}")
+        return None, None
 
 # Import finance core modules
 FinancialValuationEngine, FinancialInputs = _import_finance_core()
@@ -121,13 +102,23 @@ class FinanceCoreService:
             # Add other optional fields
             optional_fields = [
                 'cash_balance', 'amortization', 'other_non_cash', 
-                'other_working_capital', 'comparable_multiples', 
+                'other_working_capital', 'debt_schedule', 'comparable_multiples', 
                 'scenarios', 'sensitivity_analysis', 'monte_carlo_specs'
             ]
             
             for field in optional_fields:
                 if field in financial_inputs:
-                    setattr(fi, field, financial_inputs[field])
+                    if field == 'debt_schedule' and financial_inputs[field]:
+                        # Convert debt schedule keys from strings to integers if needed
+                        debt_schedule = financial_inputs[field]
+                        if debt_schedule and isinstance(debt_schedule, dict) and len(debt_schedule) > 0:
+                            # Check if keys are strings and convert to integers
+                            first_key = next(iter(debt_schedule.keys()))
+                            if isinstance(first_key, str):
+                                debt_schedule = {int(k): v for k, v in debt_schedule.items()}
+                        setattr(fi, field, debt_schedule)
+                    else:
+                        setattr(fi, field, financial_inputs[field])
                 elif field in inputs:
                     setattr(fi, field, inputs[field])
             
