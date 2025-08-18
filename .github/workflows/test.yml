@@ -50,7 +50,7 @@ jobs:
           echo "Running finance core tests..."
           python -m pytest tests/test_finance_core.py -v --tb=short
           echo "Running API-local parity tests..."
-          python -m pytest tests/test_api_local_parity.py -v --tb=short
+          python -m pytest tests/test_api_local_parity.py -v -s --tb=short
         else
           echo "No backend tests directory found, skipping..."
         fi
