@@ -14,13 +14,13 @@ function InputForm() {
     valuation_date: new Date().toISOString().split('T')[0],
     forecast_years: 5,
 
-    // Core Financial Inputs
-    revenue: [1000, 1100, 1200, 1300, 1400],
+    // Core Financial Inputs - EXACTLY matching sample_input.json
+    revenue: [1250.0, 1375.0, 1512.5, 1663.8, 1830.1],
     ebit_margin: 0.18,
     tax_rate: 0.25,
-    capex: [150, 165, 180, 195, 210],
-    depreciation: [100, 110, 120, 130, 140],
-    nwc_changes: [50, 55, 60, 65, 70],
+    capex: [187.5, 206.3, 226.9, 249.6, 274.5],
+    depreciation: [125.0, 137.5, 151.3, 166.4, 183.0],
+    nwc_changes: [-25.0, -27.5, -30.3, -33.3, -36.6], // Note: negative values as in sample_input.json
     amortization: [25, 27.5, 30, 32.5, 35],
     other_non_cash: [10, 11, 12, 13, 14],
     other_working_capital: [5, 5.5, 6, 6.5, 7],
@@ -30,36 +30,32 @@ function InputForm() {
     cost_of_debt: 0.065,
     cash_balance: 50.0,
 
-    // Cost of Capital
+    // Cost of Capital - EXACTLY matching sample_input.json
     risk_free_rate: 0.03,
     market_risk_premium: 0.06,
     levered_beta: 1.2,
-    unlevered_beta: 1.0,
+    unlevered_beta: 1.2, // Changed from 1.0 to match sample_input.json
     target_debt_to_value_ratio: 0.3,
-    unlevered_cost_of_equity: 0.11,
+    unlevered_cost_of_equity: 0.0, // Changed from 0.11 to match sample_input.json
 
-    // Debt Schedule
+    // Debt Schedule - EXACTLY matching sample_input.json
     debt_schedule: {
-      "0": 150.0,
-      "1": 135.0,
-      "2": 120.0,
-      "3": 105.0,
-      "4": 90.0
+      "0": 150.0
     },
 
-    // Comparable Multiples
-    ev_ebitda: [12.5, 14.2, 13.8, 15.1, 12.9, 13.5, 14.8, 13.2],
-    pe_ratio: [18.5, 22.1, 20.8, 24.3, 19.7, 21.5, 23.2, 20.1],
+    // Comparable Multiples - EXACTLY matching sample_input.json
+    ev_ebitda: [12.5, 14.2, 13.8, 15.1, 13.9],
+    pe_ratio: [18.5, 22.1, 20.8, 24.3, 21.4],
     ev_fcf: [15.2, 17.8, 16.5, 18.9, 15.8, 17.2, 18.5, 16.1],
-    ev_revenue: [2.8, 3.2, 3.0, 3.5, 2.9, 3.1, 3.4, 3.0],
+    ev_revenue: [2.8, 3.1, 2.9, 3.3, 3.0],
 
-    // Sensitivity Analysis
-    wacc_range: [0.075, 0.085, 0.095, 0.105, 0.115],
-    ebit_margin_range: [0.14, 0.16, 0.18, 0.20, 0.22],
-    terminal_growth_range: [0.015, 0.020, 0.025, 0.030, 0.035],
+    // Sensitivity Analysis - EXACTLY matching sample_input.json
+    wacc_range: [0.085, 0.09, 0.095, 0.10, 0.105],
+    ebit_margin_range: [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21],
+    terminal_growth_range: [0.02, 0.0225, 0.025, 0.0275, 0.03],
     target_debt_ratio_range: [0.1, 0.2, 0.3, 0.4, 0.5],
 
-    // Monte Carlo Specs
+    // Monte Carlo Specs - EXACTLY matching sample_input.json
     mc_ebit_margin_mean: 0.18,
     mc_ebit_margin_std: 0.02,
     mc_wacc_mean: 0.095,
@@ -69,7 +65,7 @@ function InputForm() {
     mc_levered_beta_mean: 1.2,
     mc_levered_beta_std: 0.1,
 
-    // Scenario Definitions
+    // Scenario Definitions - EXACTLY matching sample_input.json
     scenarios: {
       "Base Case": {},
       "Optimistic": {
@@ -80,7 +76,7 @@ function InputForm() {
       "Pessimistic": {
         ebit_margin: 0.14,
         terminal_growth_rate: 0.015,
-        weighted_average_cost_of_capital: 0.115
+        weighted_average_cost_of_capital: 0.105 // Changed from 0.115 to match sample_input.json
       }
     }
   });
