@@ -2,6 +2,9 @@ import { Download, Upload } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+// Backend API URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
+
 export function CSVUpload({ onDataLoaded }) {
   const [loading, setLoading] = useState(false);
 
@@ -12,7 +15,7 @@ export function CSVUpload({ onDataLoaded }) {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/csv/upload', {
+    fetch(`${API_BASE_URL}/csv/upload`, {
       method: 'POST',
       body: formData
     })
@@ -38,7 +41,7 @@ export function CSVUpload({ onDataLoaded }) {
   });
 
   const downloadSample = () => {
-    window.open('/api/csv/sample', '_blank');
+    window.open(`${API_BASE_URL}/csv/sample`, '_blank');
   };
 
   return (

@@ -44,10 +44,12 @@ def create_app(config_name=None):
     from app.api.analysis import analysis_bp
     from app.api.valuation import valuation_bp
     from app.api.results import results_bp
+    from app.api.csv import csv_bp
     
     app.register_blueprint(analysis_bp, url_prefix='/api/analysis')
     app.register_blueprint(valuation_bp, url_prefix='/api/valuation')
     app.register_blueprint(results_bp, url_prefix='/api/results')
+    app.register_blueprint(csv_bp, url_prefix='/api/csv')
     
     # Swagger UI registration
     try:
