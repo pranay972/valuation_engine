@@ -7,7 +7,7 @@ results_bp = Blueprint('results', __name__)
 
 @results_bp.route('/<int:analysis_id>/results', methods=['GET'])
 def get_results(analysis_id):
-    """Get results for analysis"""
+    """Get results for analysis (from database, with normalized keys)."""
     try:
         analysis = Analysis.query.get_or_404(analysis_id)
         result = AnalysisResult.query.filter_by(analysis_id=analysis_id).first()
@@ -18,6 +18,39 @@ def get_results(analysis_id):
                 'error': 'No results found for this analysis'
             }), 404
         
+        # Normalize results payload to match local comprehensive structure exactly
+        results_payload = analysis_result_schema.dump(result)
+        results_data = results_payload.get('results_data', {})
+
+        normalized = {}
+        # Pass through already-normalized keys or map legacy keys
+        if 'valuation_summary' in results_data:
+            normalized['valuation_summary'] = results_data['valuation_summary']
+        if 'dcf_valuation' in results_data:
+            normalized['dcf_valuation'] = results_data['dcf_valuation']
+        elif 'dcf_wacc' in results_data:
+            normalized['dcf_valuation'] = results_data['dcf_wacc']
+        if 'apv_valuation' in results_data:
+            normalized['apv_valuation'] = results_data['apv_valuation']
+        elif 'apv' in results_data:
+            normalized['apv_valuation'] = results_data['apv']
+        if 'comparable_valuation' in results_data:
+            normalized['comparable_valuation'] = results_data['comparable_valuation']
+        elif 'comparable_multiples' in results_data:
+            normalized['comparable_valuation'] = results_data['comparable_multiples']
+        if 'scenarios' in results_data:
+            normalized['scenarios'] = results_data['scenarios']
+        elif 'scenario' in results_data:
+            normalized['scenarios'] = results_data['scenario']
+        if 'sensitivity_analysis' in results_data:
+            normalized['sensitivity_analysis'] = results_data['sensitivity_analysis']
+        elif 'sensitivity' in results_data:
+            normalized['sensitivity_analysis'] = results_data['sensitivity']
+        if 'monte_carlo_simulation' in results_data:
+            normalized['monte_carlo_simulation'] = results_data['monte_carlo_simulation']
+        elif 'monte_carlo' in results_data:
+            normalized['monte_carlo_simulation'] = results_data['monte_carlo']
+
         return jsonify({
             'success': True,
             'data': {
@@ -29,7 +62,16 @@ def get_results(analysis_id):
                     'status': analysis.status,
                     'created_at': analysis.created_at.isoformat()
                 },
-                'results': analysis_result_schema.dump(result)
+                'results': {
+                    'id': results_payload.get('id'),
+                    'analysis_id': results_payload.get('analysis_id'),
+                    'results_data': normalized,
+                    'enterprise_value': results_payload.get('enterprise_value'),
+                    'equity_value': results_payload.get('equity_value'),
+                    'price_per_share': results_payload.get('price_per_share'),
+                    'error_message': results_payload.get('error_message'),
+                    'created_at': results_payload.get('created_at')
+                }
             }
         })
         

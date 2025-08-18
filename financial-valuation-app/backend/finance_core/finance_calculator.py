@@ -703,7 +703,13 @@ class FinancialValuationEngine:
                 raise create_error("INVALID_MONTE_CARLO_SPECS", reason="No Monte Carlo specifications provided")
             
             params = self._convert_to_valuation_params(inputs)
-            results = simulate_monte_carlo(params, runs=runs)
+            # Use a deterministic random seed so API and local produce identical results
+            seed = None
+            if inputs.monte_carlo_specs and isinstance(inputs.monte_carlo_specs, dict):
+                seed = inputs.monte_carlo_specs.get("seed", 42)
+            else:
+                seed = 42
+            results = simulate_monte_carlo(params, runs=runs, random_seed=seed)
             
             # Process WACC method results
             wacc_stats = {}

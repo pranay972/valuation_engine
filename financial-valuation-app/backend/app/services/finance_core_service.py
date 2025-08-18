@@ -11,15 +11,19 @@ logger = logging.getLogger(__name__)
 def _import_finance_core():
     """Import finance core modules from backend finance_core directory"""
     try:
-        from finance_core.finance_calculator import FinancialValuationEngine, FinancialInputs
+        from finance_core.finance_calculator import (
+            FinancialValuationEngine,
+            FinancialInputs,
+            parse_financial_inputs,
+        )
         logger.info("Successfully imported finance_calculator from backend finance_core")
-        return FinancialValuationEngine, FinancialInputs
+        return FinancialValuationEngine, FinancialInputs, parse_financial_inputs
     except ImportError as e:
         logger.error(f"Failed to import finance_calculator from backend finance_core: {e}")
-        return None, None
+        return None, None, None
 
 # Import finance core modules
-FinancialValuationEngine, FinancialInputs = _import_finance_core()
+FinancialValuationEngine, FinancialInputs, parse_financial_inputs_fn = _import_finance_core()
 
 class FinanceCoreService:
     """Service for integrating with the finance core calculator"""
@@ -43,48 +47,12 @@ class FinanceCoreService:
             return None
         
         try:
-            financial_inputs = inputs.get('financial_inputs', {})
-            
-            # Create FinancialInputs object with required fields
-            fi = FinancialInputs(
-                revenue=financial_inputs['revenue'],
-                ebit_margin=financial_inputs['ebit_margin'],
-                tax_rate=financial_inputs['tax_rate'],
-                capex=financial_inputs['capex'],
-                depreciation=financial_inputs['depreciation'],
-                nwc_changes=financial_inputs['nwc_changes'],
-                share_count=financial_inputs['share_count'],
-                terminal_growth=financial_inputs['terminal_growth_rate'],
-                wacc=financial_inputs['weighted_average_cost_of_capital'],
-                cost_of_debt=financial_inputs['cost_of_debt']
-            )
-            
-            # Add optional fields if present
-            optional_fields = [
-                'cash_balance', 'amortization', 'other_non_cash', 
-                'other_working_capital', 'debt_schedule', 'comparable_multiples', 
-                'scenarios', 'sensitivity_analysis', 'monte_carlo_specs',
-                'unlevered_cost_of_equity'
-            ]
-            
-            for field in optional_fields:
-                if field in financial_inputs:
-                    if field == 'debt_schedule' and financial_inputs[field]:
-                        # Convert debt schedule keys from strings to integers if needed
-                        debt_schedule = financial_inputs[field]
-                        if debt_schedule and isinstance(debt_schedule, dict) and len(debt_schedule) > 0:
-                            # Check if keys are strings and convert to integers
-                            first_key = next(iter(debt_schedule.keys()))
-                            if isinstance(first_key, str):
-                                debt_schedule = {int(k): v for k, v in debt_schedule.items()}
-                        setattr(fi, field, debt_schedule)
-                    else:
-                        setattr(fi, field, financial_inputs[field])
-                elif field in inputs:
-                    setattr(fi, field, inputs[field])
-            
-            logger.info("Successfully created FinancialInputs object")
-            return fi
+            if parse_financial_inputs_fn:
+                fi = parse_financial_inputs_fn(inputs)
+                logger.info("Successfully created FinancialInputs via parse_financial_inputs (direct parity)")
+                return fi
+            logger.error("parse_financial_inputs function not available")
+            return None
             
         except Exception as e:
             logger.error(f"Error creating FinancialInputs: {e}", exc_info=True)
@@ -116,9 +84,9 @@ class FinanceCoreService:
             if 'cost_of_debt' not in financial_inputs:
                 errors.append('Missing required field: cost_of_debt')
         
-        if analysis_type == 'apv':
-            if 'unlevered_cost_of_equity' not in financial_inputs:
-                errors.append('Missing required field: unlevered_cost_of_equity')
+        # For APV, do not require unlevered_cost_of_equity explicitly; local calculator can derive it
+        # if analysis_type == 'apv':
+        #     pass
         
         elif analysis_type == 'multiples':
             if 'comparable_multiples' not in inputs:
@@ -182,70 +150,54 @@ class FinanceCoreService:
                     'company_name': company_name
                 }
             
-            # Run analysis based on type
-            logger.info(f"Running {analysis_type} analysis...")
-            
-            if analysis_type == 'dcf_wacc':
-                results = self.calculator.calculate_dcf_valuation(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            elif analysis_type == 'apv':
-                results = self.calculator.calculate_apv_valuation(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            elif analysis_type == 'multiples':
-                results = self.calculator.analyze_comparable_multiples(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            elif analysis_type == 'scenario':
-                results = self.calculator.perform_scenario_analysis(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            elif analysis_type == 'sensitivity':
-                results = self.calculator.perform_sensitivity_analysis(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            elif analysis_type == 'monte_carlo':
-                results = self.calculator.simulate_monte_carlo(fi)
-                return {
-                    'success': True,
-                    'results': results,
-                    'analysis_type': analysis_type,
-                    'company_name': company_name
-                }
-            
-            else:
+            # Run comprehensive valuation once to ensure identical logic/paths as local
+            logger.info("Running comprehensive valuation for exact parity...")
+            valuation_date = inputs.get('valuation_date', '2024-01-01')
+            all_results = self.calculator.perform_comprehensive_valuation(
+                inputs=fi,
+                company_name=company_name,
+                valuation_date=valuation_date
+            )
+
+            # Map analysis_type to section key
+            type_to_key = {
+                'dcf_wacc': 'dcf_valuation',
+                'apv': 'apv_valuation',
+                'multiples': 'comparable_valuation',
+                'scenario': 'scenarios',
+                'sensitivity': 'sensitivity_analysis',
+                'monte_carlo': 'monte_carlo_simulation',
+            }
+            section_key = type_to_key.get(analysis_type)
+            if not section_key:
                 return {
                     'success': False,
                     'error': f'Unsupported analysis type: {analysis_type}',
                     'analysis_type': analysis_type,
                     'company_name': company_name
                 }
+
+            section = all_results.get(section_key, {})
+            # Include both normalized and legacy keys for compatibility
+            legacy_map = {
+                'dcf_valuation': 'dcf_wacc',
+                'apv_valuation': 'apv',
+                'comparable_valuation': 'comparable_multiples',
+                'scenarios': 'scenario',
+                'sensitivity_analysis': 'sensitivity',
+                'monte_carlo_simulation': 'monte_carlo',
+            }
+            legacy_key = legacy_map.get(section_key)
+            results_payload = {section_key: section}
+            if legacy_key:
+                results_payload[legacy_key] = section
+
+            return {
+                'success': True,
+                'results': results_payload,
+                'analysis_type': analysis_type,
+                'company_name': company_name
+            }
         
         except Exception as e:
             logger.error(f'Analysis failed: {str(e)}', exc_info=True)

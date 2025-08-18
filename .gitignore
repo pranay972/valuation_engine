@@ -58,3 +58,7 @@ logs/
 *.old
 tmp/
 temp/
+
+# Script outputs
+**/artifacts/
+**/artifacts/*.json
