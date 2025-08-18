@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { DCFChart, MonteCarloChart, SensitivityChart } from '../components/Charts';
+import { APVChart, ComparableMultiplesChart, DCFChart, MonteCarloChart, ScenarioChart, SensitivityChart } from '../components/Charts';
 import { analysisAPI, resultsAPI } from '../services/api';
 
 function Results() {
@@ -152,7 +152,6 @@ function Results() {
       }
     }
 
-    console.log(`Checking if ${analysisTypeId} was selected:`, isSelected, 'Selected Types:', selectedAnalysisTypes);
     return isSelected;
   };
 
@@ -168,16 +167,15 @@ function Results() {
   };
 
   const renderDCFResults = (results) => {
-    console.log('renderDCFResults called with:', results);
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    console.log('Extracted resultsData:', resultsData);
-    if (!resultsData || !resultsData.dcf_wacc) {
-      console.log('No DCF results data found');
+
+    // Check for both dcf_valuation (new) and dcf_wacc (legacy)
+    const dcf = resultsData?.dcf_valuation || resultsData?.dcf_wacc;
+    if (!dcf) {
       return null;
     }
 
-    const dcf = resultsData.dcf_wacc;
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #007bff', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -198,47 +196,87 @@ function Results() {
             </p>
           </div>
           <div className="card">
-            <h3>Price per Share</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
-              ${dcf.price_per_share}
+            <h3>Price Per Share</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffc107' }}>
+              {formatCurrency(dcf.price_per_share)}
             </p>
           </div>
         </div>
 
-        <div className="grid" style={{ marginTop: '20px' }}>
+        <div className="grid">
           <div className="card">
             <h3>WACC</h3>
-            <p>{formatPercentage(dcf.wacc)}</p>
+            <p style={{ fontSize: '20px', color: '#6c757d' }}>
+              {formatPercentage(dcf.wacc)}
+            </p>
           </div>
           <div className="card">
             <h3>Terminal Growth</h3>
-            <p>{formatPercentage(dcf.terminal_growth)}</p>
+            <p style={{ fontSize: '20px', color: '#6c757d' }}>
+              {formatPercentage(dcf.terminal_growth)}
+            </p>
           </div>
           <div className="card">
             <h3>Terminal Value</h3>
-            <p>{formatCurrency(dcf.terminal_value)}</p>
-          </div>
-          <div className="card">
-            <h3>Present Value of FCFs</h3>
-            <p>{formatCurrency(dcf.present_value_of_fcfs)}</p>
+            <p style={{ fontSize: '20px', color: '#6c757d' }}>
+              {formatCurrency(dcf.terminal_value)}
+            </p>
           </div>
         </div>
 
+        {dcf.net_debt_breakdown && (
+          <div className="card">
+            <h3>Net Debt Breakdown</h3>
+            <div className="grid">
+              <div>
+                <strong>Current Debt:</strong> {formatCurrency(dcf.net_debt_breakdown.current_debt)}
+              </div>
+              <div>
+                <strong>Cash Balance:</strong> {formatCurrency(dcf.net_debt_breakdown.cash_balance)}
+              </div>
+              <div>
+                <strong>Net Debt:</strong> {formatCurrency(dcf.net_debt_breakdown.net_debt)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {dcf.wacc_components && (
+          <div className="card">
+            <h3>WACC Components</h3>
+            <div className="grid">
+              <div>
+                <strong>Cost of Equity:</strong> {formatPercentage(dcf.wacc_components.cost_of_equity)}
+              </div>
+              <div>
+                <strong>Cost of Debt:</strong> {formatPercentage(dcf.wacc_components.cost_of_debt)}
+              </div>
+              <div>
+                <strong>Target Debt Ratio:</strong> {formatPercentage(dcf.wacc_components.target_debt_ratio)}
+              </div>
+              <div>
+                <strong>Tax Rate:</strong> {formatPercentage(dcf.wacc_components.tax_rate)}
+              </div>
+            </div>
+          </div>
+        )}
+
         {dcf.free_cash_flows_after_tax_fcff && (
           <div className="card">
-            <h3>Free Cash Flows (5 Years)</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+            <h3>Free Cash Flows (FCFF)</h3>
+            <div className="grid">
               {dcf.free_cash_flows_after_tax_fcff.map((fcf, index) => (
-                <div key={index} style={{ textAlign: 'center' }}>
-                  <strong>Year {index + 1}</strong>
-                  <p>{formatCurrency(fcf)}</p>
+                <div key={index}>
+                  <strong>Year {index + 1}:</strong> {formatCurrency(fcf)}
                 </div>
               ))}
             </div>
           </div>
         )}
-        <div style={{ marginTop: '30px' }}>
-          <h3>Free Cash Flows (Chart)</h3>
+
+        {/* DCF Chart */}
+        <div className="card">
+          <h3>Free Cash Flows Chart</h3>
           <DCFChart data={dcf} />
         </div>
       </div>
@@ -248,9 +286,11 @@ function Results() {
   const renderAPVResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.apv) return null;
 
-    const apv = resultsData.apv;
+    // Check for both apv_valuation (new) and apv (legacy)
+    const apv = resultsData?.apv_valuation || resultsData?.apv;
+    if (!apv) return null;
+
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #28a745', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -271,26 +311,61 @@ function Results() {
             </p>
           </div>
           <div className="card">
-            <h3>Price per Share</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
-              ${apv.price_per_share}
+            <h3>Price Per Share</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffc107' }}>
+              {formatCurrency(apv.price_per_share)}
             </p>
           </div>
         </div>
 
-        <div className="grid" style={{ marginTop: '20px' }}>
+        {apv.apv_components && (
           <div className="card">
-            <h3>Unlevered Cost of Equity</h3>
-            <p>{formatPercentage(apv.unlevered_cost_of_equity)}</p>
+            <h3>APV Components</h3>
+            <div className="grid">
+              <div>
+                <strong>Value Unlevered:</strong> {formatCurrency(apv.apv_components.value_unlevered)}
+              </div>
+              <div>
+                <strong>PV Tax Shield:</strong> {formatCurrency(apv.apv_components.pv_tax_shield)}
+              </div>
+            </div>
           </div>
+        )}
+
+        {apv.net_debt_breakdown && (
           <div className="card">
-            <h3>Value Unlevered</h3>
-            <p>{formatCurrency(apv.apv_components.value_unlevered)}</p>
+            <h3>Net Debt Breakdown</h3>
+            <div className="grid">
+              <div>
+                <strong>Current Debt:</strong> {formatCurrency(apv.net_debt_breakdown.current_debt)}
+              </div>
+              <div>
+                <strong>Cash Balance:</strong> {formatCurrency(apv.net_debt_breakdown.cash_balance)}
+              </div>
+              <div>
+                <strong>Net Debt:</strong> {formatCurrency(apv.net_debt_breakdown.net_debt)}
+              </div>
+            </div>
           </div>
+        )}
+
+        {apv.unlevered_fcfs_used && (
           <div className="card">
-            <h3>PV Tax Shield</h3>
-            <p>{formatCurrency(apv.apv_components.pv_tax_shield)}</p>
+            <h3>Unlevered Free Cash Flows</h3>
+            <div className="grid">
+              {apv.unlevered_fcfs_used.map((fcf, index) => (
+                <div key={index}>
+                  <strong>Year {index + 1}:</strong> {formatCurrency(fcf)}
+                </div>
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* APV Chart */}
+        <div className="card">
+          <h3>Unlevered Free Cash Flows Chart</h3>
+          <APVChart data={apv} />
         </div>
       </div>
     );
@@ -299,9 +374,11 @@ function Results() {
   const renderComparableResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.comparable_multiples) return null;
 
-    const comp = resultsData.comparable_multiples;
+    // Check for both comparable_valuation (new) and comparable_multiples (legacy)
+    const comp = resultsData?.comparable_valuation || resultsData?.comparable_multiples;
+    if (!comp) return null;
+
     return (
       <div className="card" style={{ marginBottom: '30px' }}>
         <h2 style={{ borderBottom: '2px solid #ffc107', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -313,57 +390,67 @@ function Results() {
           <div className="card">
             <h3>Enterprise Value</h3>
             <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
-              {formatCurrency(results?.data?.results?.enterprise_value)}
+              {formatCurrency(comp.enterprise_value)}
             </p>
           </div>
           <div className="card">
             <h3>Equity Value</h3>
             <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
-              {formatCurrency(results?.data?.results?.equity_value)}
+              {formatCurrency(comp.equity_value)}
             </p>
           </div>
           <div className="card">
             <h3>Price Per Share</h3>
             <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
-              ${results?.data?.results?.price_per_share?.toFixed(2) || 'N/A'}
+              {formatCurrency(comp.price_per_share)}
             </p>
           </div>
         </div>
 
-        <div className="grid">
-          <div className="card">
-            <h3>Mean Enterprise Value</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
-              {formatCurrency(comp.ev_multiples.mean_ev)}
-            </p>
-          </div>
-          <div className="card">
-            <h3>Median Enterprise Value</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
-              {formatCurrency(comp.ev_multiples.median_ev)}
-            </p>
-          </div>
-          <div className="card">
-            <h3>Standard Deviation</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
-              {formatCurrency(comp.ev_multiples.std_dev)}
-            </p>
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Implied Values by Multiple</h3>
+        {comp.ev_multiples && (
           <div className="grid">
-            {Object.entries(comp.implied_evs_by_multiple).map(([multiple, data]) => (
-              <div key={multiple} className="card">
-                <h4>{multiple}</h4>
-                <p><strong>Mean Implied EV:</strong> {formatCurrency(data.mean_implied_ev)}</p>
-                <p><strong>Median Implied EV:</strong> {formatCurrency(data.median_implied_ev)}</p>
-                <p><strong>Mean Multiple:</strong> {data.mean_multiple.toFixed(2)}x</p>
-                <p><strong>Peer Count:</strong> {data.peer_count}</p>
-              </div>
-            ))}
+            <div className="card">
+              <h3>Mean Enterprise Value</h3>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
+                {formatCurrency(comp.ev_multiples.mean_ev)}
+              </p>
+            </div>
+            <div className="card">
+              <h3>Median Enterprise Value</h3>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+                {formatCurrency(comp.ev_multiples.median_ev)}
+              </p>
+            </div>
+            <div className="card">
+              <h3>Standard Deviation</h3>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
+                {formatCurrency(comp.ev_multiples.std_dev)}
+              </p>
+            </div>
           </div>
+        )}
+
+        {comp.implied_evs_by_multiple && (
+          <div className="card">
+            <h3>Implied Values by Multiple</h3>
+            <div className="grid">
+              {Object.entries(comp.implied_evs_by_multiple).map(([multiple, data]) => (
+                <div key={multiple} className="card">
+                  <h4>{multiple}</h4>
+                  <p><strong>Mean Implied EV:</strong> {formatCurrency(data.mean_implied_ev)}</p>
+                  <p><strong>Median Implied EV:</strong> {formatCurrency(data.median_implied_ev)}</p>
+                  <p><strong>Mean Multiple:</strong> {data.mean_multiple.toFixed(2)}x</p>
+                  <p><strong>Peer Count:</strong> {data.peer_count}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Comparable Multiples Chart */}
+        <div className="card">
+          <h3>Implied Values by Multiple (Chart)</h3>
+          <ComparableMultiplesChart data={comp} />
         </div>
       </div>
     );
@@ -372,11 +459,14 @@ function Results() {
   const renderScenarioResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.scenarios) return null;
 
-    // The scenarios data is nested under resultsData.scenarios.scenarios
-    const scenarios = resultsData.scenarios.scenarios;
+    // Check for both scenarios (new) and scenario (legacy)
+    const scenarios = resultsData?.scenarios || resultsData?.scenario;
     if (!scenarios) return null;
+
+    // The scenarios data might be nested under resultsData.scenarios.scenarios
+    const scenarioData = scenarios.scenarios || scenarios;
+    if (!scenarioData) return null;
 
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #17a2b8' }}>
@@ -386,7 +476,7 @@ function Results() {
 
         {/* Detailed Scenario Breakdown */}
         <div className="grid">
-          {Object.entries(scenarios).map(([scenario, data]) => (
+          {Object.entries(scenarioData).map(([scenario, data]) => (
             <div key={scenario} className="card">
               <h3 style={{ textTransform: 'capitalize', color: scenario === 'Base Case' ? '#17a2b8' : scenario === 'Optimistic' ? '#28a745' : '#dc3545' }}>
                 {scenario.replace('_', ' ')}
@@ -394,7 +484,7 @@ function Results() {
               <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
                 <p style={{ color: '#007bff' }}><strong>Enterprise Value:</strong> {formatCurrency(data.ev)}</p>
                 <p style={{ color: '#28a745' }}><strong>Equity Value:</strong> {formatCurrency(data.equity)}</p>
-                <p style={{ color: '#fd7e14' }}><strong>Price per Share:</strong> ${data.price_per_share}</p>
+                <p style={{ color: '#fd7e14' }}><strong>Price per Share:</strong> {formatCurrency(data.price_per_share)}</p>
               </div>
               {data.input_changes && (
                 <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
@@ -409,6 +499,12 @@ function Results() {
             </div>
           ))}
         </div>
+
+        {/* Scenario Chart */}
+        <div className="card">
+          <h3>Scenario Comparison Chart</h3>
+          <ScenarioChart data={scenarioData} />
+        </div>
       </div>
     );
   };
@@ -416,9 +512,11 @@ function Results() {
   const renderSensitivityResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.sensitivity_analysis) return null;
 
-    const sens = resultsData.sensitivity_analysis;
+    // Check for both sensitivity_analysis (new) and sensitivity (legacy)
+    const sens = resultsData?.sensitivity_analysis || resultsData?.sensitivity;
+    if (!sens) return null;
+
     const sensitivityResults = sens.sensitivity_results;
 
     if (!sensitivityResults) return null;
@@ -445,7 +543,7 @@ function Results() {
                 <h4>Price per Share</h4>
                 {Object.entries(data.price_per_share || {}).map(([value, price]) => (
                   <p key={value} style={{ margin: '2px 0' }}>
-                    {value}: ${price}
+                    {value}: {formatCurrency(price)}
                   </p>
                 ))}
               </div>
@@ -463,46 +561,55 @@ function Results() {
   const renderMonteCarloResults = (results) => {
     // Extract the actual results data from the nested structure
     const resultsData = results?.data?.results?.results_data;
-    if (!resultsData || !resultsData.monte_carlo) return null;
 
-    const mc = resultsData.monte_carlo;
+    // Check for both monte_carlo_simulation (new) and monte_carlo (legacy)
+    const mc = resultsData?.monte_carlo_simulation || resultsData?.monte_carlo;
+    if (!mc) return null;
+
     return (
       <div className="card" style={{ marginBottom: '30px', borderLeft: '5px solid #6f42c1' }}>
         <h2 style={{ borderBottom: '2px solid #6f42c1', paddingBottom: '10px', marginBottom: '20px' }}>
           🎲 Monte Carlo Simulation
         </h2>
 
-        <div className="grid">
-          <div className="card">
-            <h3>Mean Enterprise Value</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
-              {formatCurrency(mc.wacc_method.mean_ev)}
-            </p>
-          </div>
-          <div className="card">
-            <h3>Median Enterprise Value</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
-              {formatCurrency(mc.wacc_method.median_ev)}
-            </p>
-          </div>
-          <div className="card">
-            <h3>Standard Deviation</h3>
-            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
-              {formatCurrency(mc.wacc_method.std_dev)}
-            </p>
-          </div>
-        </div>
+        {mc.wacc_method && (
+          <>
+            <div className="grid">
+              <div className="card">
+                <h3>Mean Enterprise Value</h3>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
+                  {formatCurrency(mc.wacc_method.mean_ev)}
+                </p>
+              </div>
+              <div className="card">
+                <h3>Median Enterprise Value</h3>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+                  {formatCurrency(mc.wacc_method.median_ev)}
+                </p>
+              </div>
+              <div className="card">
+                <h3>Standard Deviation</h3>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3545' }}>
+                  {formatCurrency(mc.wacc_method.std_dev)}
+                </p>
+              </div>
+            </div>
 
-        <div className="card">
-          <h3>95% Confidence Interval</h3>
-          <p style={{ fontSize: '18px', textAlign: 'center' }}>
-            {formatCurrency(mc.wacc_method.confidence_interval_95[0])} - {formatCurrency(mc.wacc_method.confidence_interval_95[1])}
-          </p>
-        </div>
+            <div className="card">
+              <h3>95% Confidence Interval</h3>
+              <p style={{ fontSize: '18px', textAlign: 'center' }}>
+                {formatCurrency(mc.wacc_method.confidence_interval_95[0])} - {formatCurrency(mc.wacc_method.confidence_interval_95[1])}
+              </p>
+            </div>
+          </>
+        )}
 
-        <div className="card">
-          <p><strong>Simulation Runs:</strong> {mc.runs.toLocaleString()}</p>
-        </div>
+        {mc.runs && (
+          <div className="card">
+            <p><strong>Simulation Runs:</strong> {mc.runs.toLocaleString()}</p>
+          </div>
+        )}
+
         <div style={{ marginTop: '30px' }}>
           <h3>Monte Carlo Distribution (Chart)</h3>
           <MonteCarloChart data={mc} />
@@ -604,9 +711,6 @@ function Results() {
       {/* Show only the analysis types that were selected by the user */}
       {allResults.length > 0 && (
         <div>
-          {console.log('Rendering results section with allResults:', allResults)}
-          {console.log('Checking wasAnalysisSelected for dcf_wacc:', wasAnalysisSelected('dcf_wacc'))}
-
           {/* DCF Results - only if selected */}
           {wasAnalysisSelected('dcf_wacc') && renderDCFResults(findResultByAnalysisType('dcf_wacc'))}
 

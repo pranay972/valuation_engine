@@ -20,63 +20,83 @@ function InputForm() {
     tax_rate: 0.25,
     capex: [187.5, 206.3, 226.9, 249.6, 274.5],
     depreciation: [125.0, 137.5, 151.3, 166.4, 183.0],
-    nwc_changes: [-25.0, -27.5, -30.3, -33.3, -36.6], // Note: negative values as in sample_input.json
-    amortization: [25, 27.5, 30, 32.5, 35],
-    other_non_cash: [10, 11, 12, 13, 14],
-    other_working_capital: [5, 5.5, 6, 6.5, 7],
+    nwc_changes: [-25.0, -27.5, -30.3, -33.3, -36.6],
     weighted_average_cost_of_capital: 0.095,
     terminal_growth_rate: 0.025,
     share_count: 45.2,
     cost_of_debt: 0.065,
     cash_balance: 50.0,
 
-    // Cost of Capital - EXACTLY matching sample_input.json
-    risk_free_rate: 0.03,
-    market_risk_premium: 0.06,
-    levered_beta: 1.2,
-    unlevered_beta: 1.2, // Changed from 1.0 to match sample_input.json
-    target_debt_to_value_ratio: 0.3,
-    unlevered_cost_of_equity: 0.0, // Changed from 0.11 to match sample_input.json
+    // Cost of Capital - EXACTLY matching sample_input.json structure
+    cost_of_capital: {
+      risk_free_rate: 0.03,
+      market_risk_premium: 0.06,
+      levered_beta: 1.2,
+      unlevered_beta: 1.2,
+      target_debt_to_value_ratio: 0.3,
+      unlevered_cost_of_equity: 0.0,
+      cost_of_equity: 0.14
+    },
 
     // Debt Schedule - EXACTLY matching sample_input.json
     debt_schedule: {
       "0": 150.0
     },
 
+    // Control flags - EXACTLY matching sample_input.json
+    use_input_wacc: true,
+    use_debt_schedule: false,
+
     // Comparable Multiples - EXACTLY matching sample_input.json
-    ev_ebitda: [12.5, 14.2, 13.8, 15.1, 13.9],
-    pe_ratio: [18.5, 22.1, 20.8, 24.3, 21.4],
-    ev_fcf: [15.2, 17.8, 16.5, 18.9, 15.8, 17.2, 18.5, 16.1],
-    ev_revenue: [2.8, 3.1, 2.9, 3.3, 3.0],
+    comparable_multiples: {
+      "EV/EBITDA": [12.5, 14.2, 13.8, 15.1, 13.9],
+      "EV/Revenue": [2.8, 3.1, 2.9, 3.3, 3.0],
+      "P/E": [18.5, 22.1, 20.8, 24.3, 21.4]
+    },
 
     // Sensitivity Analysis - EXACTLY matching sample_input.json
-    wacc_range: [0.085, 0.09, 0.095, 0.10, 0.105],
-    ebit_margin_range: [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21],
-    terminal_growth_range: [0.02, 0.0225, 0.025, 0.0275, 0.03],
-    target_debt_ratio_range: [0.1, 0.2, 0.3, 0.4, 0.5],
+    sensitivity_analysis: {
+      ebit_margin: [0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21],
+      terminal_growth_rate: [0.02, 0.0225, 0.025, 0.0275, 0.03],
+      weighted_average_cost_of_capital: [0.085, 0.09, 0.095, 0.10, 0.105]
+    },
 
     // Monte Carlo Specs - EXACTLY matching sample_input.json
-    mc_ebit_margin_mean: 0.18,
-    mc_ebit_margin_std: 0.02,
-    mc_wacc_mean: 0.095,
-    mc_wacc_std: 0.01,
-    mc_terminal_growth_mean: 0.025,
-    mc_terminal_growth_std: 0.005,
-    mc_levered_beta_mean: 1.2,
-    mc_levered_beta_std: 0.1,
+    monte_carlo_specs: {
+      ebit_margin: {
+        distribution: "normal",
+        params: {
+          mean: 0.18,
+          std: 0.02
+        }
+      },
+      terminal_growth_rate: {
+        distribution: "normal",
+        params: {
+          mean: 0.025,
+          std: 0.005
+        }
+      },
+      weighted_average_cost_of_capital: {
+        distribution: "normal",
+        params: {
+          mean: 0.095,
+          std: 0.01
+        }
+      }
+    },
 
     // Scenario Definitions - EXACTLY matching sample_input.json
     scenarios: {
-      "Base Case": {},
-      "Optimistic": {
+      "optimistic": {
         ebit_margin: 0.22,
         terminal_growth_rate: 0.035,
         weighted_average_cost_of_capital: 0.085
       },
-      "Pessimistic": {
+      "pessimistic": {
         ebit_margin: 0.14,
         terminal_growth_rate: 0.015,
-        weighted_average_cost_of_capital: 0.105 // Changed from 0.115 to match sample_input.json
+        weighted_average_cost_of_capital: 0.105
       }
     }
   });
@@ -105,10 +125,23 @@ function InputForm() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    // Handle nested cost_of_capital fields
+    if (name.startsWith('cost_of_capital.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        cost_of_capital: {
+          ...prev.cost_of_capital,
+          [field]: parseFloat(value) || 0
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleArrayInputChange = (fieldName, index, value) => {
@@ -142,90 +175,62 @@ function InputForm() {
       const analysisResponses = await Promise.all(analysisPromises);
       const analysisIds = analysisResponses.map(response => response.data.data.id);
 
-      // Prepare the complete input data
+      // Prepare the complete input data - EXACTLY matching sample_input.json structure
       const completeInputData = {
         company_name: formData.company_name,
         valuation_date: formData.valuation_date,
         forecast_years: parseInt(formData.forecast_years),
         financial_inputs: {
           revenue: formData.revenue,
-          ebit_margin: parseFloat(formData.ebit_margin),
-          tax_rate: parseFloat(formData.tax_rate),
+          ebit_margin: parseFloat(formData.ebit_margin) || 0,
+          tax_rate: parseFloat(formData.tax_rate) || 0,
           capex: formData.capex,
           depreciation: formData.depreciation,
           nwc_changes: formData.nwc_changes,
-          amortization: formData.amortization,
-          other_non_cash: formData.other_non_cash,
-          other_working_capital: formData.other_working_capital,
-          weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital),
-          terminal_growth_rate: parseFloat(formData.terminal_growth_rate),
-          share_count: parseFloat(formData.share_count),
-          cost_of_debt: parseFloat(formData.cost_of_debt),
-          cash_balance: parseFloat(formData.cash_balance),
-          // APV-specific fields (required for APV analysis)
-          unlevered_cost_of_equity: parseFloat(formData.unlevered_cost_of_equity),
-          // Additional cost of capital fields
-          risk_free_rate: parseFloat(formData.risk_free_rate),
-          market_risk_premium: parseFloat(formData.market_risk_premium),
-          levered_beta: parseFloat(formData.levered_beta),
-          unlevered_beta: parseFloat(formData.unlevered_beta),
-          target_debt_to_value_ratio: parseFloat(formData.target_debt_to_value_ratio),
-          debt_schedule: formData.debt_schedule
-        },
-        comparable_multiples: {
-          "EV/EBITDA": formData.ev_ebitda,
-          "P/E": formData.pe_ratio,
-          "EV/FCF": formData.ev_fcf,
-          "EV/Revenue": formData.ev_revenue
-        },
-        sensitivity_analysis: {
-          wacc_range: formData.wacc_range,
-          ebit_margin_range: formData.ebit_margin_range,
-          terminal_growth_range: formData.terminal_growth_range,
-          target_debt_ratio_range: formData.target_debt_ratio_range
-        },
-        monte_carlo_specs: {
-          ebit_margin: {
-            distribution: "normal",
-            params: {
-              mean: parseFloat(formData.mc_ebit_margin_mean),
-              std: parseFloat(formData.mc_ebit_margin_std)
-            }
+          weighted_average_cost_of_capital: parseFloat(formData.weighted_average_cost_of_capital) || 0,
+          terminal_growth_rate: parseFloat(formData.terminal_growth_rate) || 0,
+          share_count: parseFloat(formData.share_count) || 0,
+          cost_of_debt: parseFloat(formData.cost_of_debt) || 0,
+          cash_balance: parseFloat(formData.cash_balance) || 0,
+          cost_of_capital: {
+            risk_free_rate: parseFloat(formData.cost_of_capital.risk_free_rate) || 0,
+            market_risk_premium: parseFloat(formData.cost_of_capital.market_risk_premium) || 0,
+            levered_beta: parseFloat(formData.cost_of_capital.levered_beta) || 0,
+            unlevered_beta: parseFloat(formData.cost_of_capital.unlevered_beta) || 0,
+            target_debt_to_value_ratio: parseFloat(formData.cost_of_capital.target_debt_to_value_ratio) || 0,
+            unlevered_cost_of_equity: parseFloat(formData.cost_of_capital.unlevered_cost_of_equity) || 0,
+            cost_of_equity: parseFloat(formData.cost_of_capital.cost_of_equity) || 0
           },
-          weighted_average_cost_of_capital: {
-            distribution: "normal",
-            params: {
-              mean: parseFloat(formData.mc_wacc_mean),
-              std: parseFloat(formData.mc_wacc_std)
-            }
-          },
-          terminal_growth_rate: {
-            distribution: "normal",
-            params: {
-              mean: parseFloat(formData.mc_terminal_growth_mean),
-              std: parseFloat(formData.mc_terminal_growth_std)
-            }
-          },
-          levered_beta: {
-            distribution: "normal",
-            params: {
-              mean: parseFloat(formData.mc_levered_beta_mean),
-              std: parseFloat(formData.mc_levered_beta_std)
-            }
-          }
+          debt_schedule: formData.debt_schedule,
+          use_input_wacc: formData.use_input_wacc,
+          use_debt_schedule: formData.use_debt_schedule
         },
+        comparable_multiples: formData.comparable_multiples,
+        sensitivity_analysis: formData.sensitivity_analysis,
+        monte_carlo_specs: formData.monte_carlo_specs,
         scenarios: formData.scenarios
       };
 
+      // Debug: Log the complete input data to check for any undefined values
+      console.log('Complete input data:', JSON.stringify(completeInputData, null, 2));
+
+      // Check for any undefined or null values
+      const checkForUndefined = (obj, path = '') => {
+        for (const [key, value] of Object.entries(obj)) {
+          const currentPath = path ? `${path}.${key}` : key;
+          if (value === undefined || value === null) {
+            console.error(`Found undefined/null value at ${currentPath}:`, value);
+          } else if (typeof value === 'object' && value !== null) {
+            checkForUndefined(value, currentPath);
+          }
+        }
+      };
+
+      checkForUndefined(completeInputData);
+
       // Submit inputs for each analysis
       const inputPromises = analysisIds.map(analysisId =>
-        valuationAPI.submitInputs(analysisId, {
-          financial_inputs: completeInputData.financial_inputs,
-          comparable_multiples: completeInputData.comparable_multiples,
-          scenarios: completeInputData.scenarios,
-          sensitivity_analysis: completeInputData.sensitivity_analysis,
-          monte_carlo_specs: completeInputData.monte_carlo_specs
-        })
+        valuationAPI.submitInputs(analysisId, completeInputData)
       );
 
       await Promise.all(inputPromises);
@@ -261,28 +266,55 @@ function InputForm() {
     </div>
   );
 
-  const renderMultiplesInput = (fieldName, label) => (
-    <div>
-      <label>{label}</label>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-        {formData[fieldName].map((value, index) => (
-          <input
-            key={index}
-            type="number"
-            value={value}
-            onChange={(e) => {
-              const newArray = [...formData[fieldName]];
-              newArray[index] = parseFloat(e.target.value) || 0;
-              setFormData(prev => ({ ...prev, [fieldName]: newArray }));
-            }}
-            className="input"
-            placeholder={`Multiple ${index + 1}`}
-            step="0.1"
-          />
-        ))}
+  const renderMultiplesInput = (fieldName, label) => {
+    // Handle nested field names like 'comparable_multiples.EV/EBITDA'
+    const fieldParts = fieldName.split('.');
+    let fieldData;
+    if (fieldParts.length === 2) {
+      fieldData = formData[fieldParts[0]]?.[fieldParts[1]];
+    } else {
+      fieldData = formData[fieldName];
+    }
+
+    if (!fieldData || !Array.isArray(fieldData)) {
+      console.warn(`Field ${fieldName} not found or not an array:`, fieldData);
+      return null;
+    }
+
+    return (
+      <div>
+        <label>{label}</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+          {fieldData.map((value, index) => (
+            <input
+              key={index}
+              type="number"
+              value={value}
+              onChange={(e) => {
+                const newArray = [...fieldData];
+                newArray[index] = parseFloat(e.target.value) || 0;
+
+                if (fieldParts.length === 2) {
+                  setFormData(prev => ({
+                    ...prev,
+                    [fieldParts[0]]: {
+                      ...prev[fieldParts[0]],
+                      [fieldParts[1]]: newArray
+                    }
+                  }));
+                } else {
+                  setFormData(prev => ({ ...prev, [fieldName]: newArray }));
+                }
+              }}
+              className="input"
+              placeholder={`Multiple ${index + 1}`}
+              step="0.1"
+            />
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="container">
@@ -474,9 +506,13 @@ function InputForm() {
         {/* Optional Items */}
         <div className="card">
           <h2>Optional Items (millions)</h2>
-          {renderArrayInput('amortization', 'Amortization')}
-          {renderArrayInput('other_non_cash', 'Other Non-Cash Items')}
-          {renderArrayInput('other_working_capital', 'Other Working Capital')}
+          {/* These fields are not directly mapped to formData.financial_inputs in the new structure,
+              but they are part of the original formData. They are kept here for consistency
+              with the original form's structure, but their values are not directly editable
+              from the CSV upload or the new formData structure. */}
+          {/* {renderArrayInput('amortization', 'Amortization')} */}
+          {/* {renderArrayInput('other_non_cash', 'Other Non-Cash Items')} */}
+          {/* {renderArrayInput('other_working_capital', 'Other Working Capital')} */}
         </div>
 
         {/* Cost of Capital - only if APV analysis is selected (needs unlevered cost of equity) */}
@@ -488,8 +524,8 @@ function InputForm() {
                 <label>Risk-Free Rate (%)</label>
                 <input
                   type="number"
-                  name="risk_free_rate"
-                  value={formData.risk_free_rate}
+                  name="cost_of_capital.risk_free_rate"
+                  value={formData.cost_of_capital.risk_free_rate}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
@@ -501,8 +537,8 @@ function InputForm() {
                 <label>Market Risk Premium (%)</label>
                 <input
                   type="number"
-                  name="market_risk_premium"
-                  value={formData.market_risk_premium}
+                  name="cost_of_capital.market_risk_premium"
+                  value={formData.cost_of_capital.market_risk_premium}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
@@ -514,8 +550,8 @@ function InputForm() {
                 <label>Levered Beta</label>
                 <input
                   type="number"
-                  name="levered_beta"
-                  value={formData.levered_beta}
+                  name="cost_of_capital.levered_beta"
+                  value={formData.cost_of_capital.levered_beta}
                   onChange={handleInputChange}
                   className="input"
                   step="0.1"
@@ -525,8 +561,8 @@ function InputForm() {
                 <label>Unlevered Beta</label>
                 <input
                   type="number"
-                  name="unlevered_beta"
-                  value={formData.unlevered_beta}
+                  name="cost_of_capital.unlevered_beta"
+                  value={formData.cost_of_capital.unlevered_beta}
                   onChange={handleInputChange}
                   className="input"
                   step="0.1"
@@ -536,8 +572,8 @@ function InputForm() {
                 <label>Target Debt-to-Value Ratio</label>
                 <input
                   type="number"
-                  name="target_debt_to_value_ratio"
-                  value={formData.target_debt_to_value_ratio}
+                  name="cost_of_capital.target_debt_to_value_ratio"
+                  value={formData.cost_of_capital.target_debt_to_value_ratio}
                   onChange={handleInputChange}
                   className="input"
                   step="0.01"
@@ -545,18 +581,33 @@ function InputForm() {
                   max="1"
                 />
               </div>
-              <div>
-                <label>Unlevered Cost of Equity (%)</label>
-                <input
-                  type="number"
-                  name="unlevered_cost_of_equity"
-                  value={formData.unlevered_cost_of_equity}
-                  onChange={handleInputChange}
-                  className="input"
-                  step="0.001"
-                  min="0"
-                  max="1"
-                />
+              <div className="grid">
+                <div>
+                  <label>Unlevered Cost of Equity</label>
+                  <input
+                    type="number"
+                    name="cost_of_capital.unlevered_cost_of_equity"
+                    value={formData.cost_of_capital.unlevered_cost_of_equity}
+                    onChange={handleInputChange}
+                    className="input"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                  />
+                </div>
+                <div>
+                  <label>Cost of Equity</label>
+                  <input
+                    type="number"
+                    name="cost_of_capital.cost_of_equity"
+                    value={formData.cost_of_capital.cost_of_equity}
+                    onChange={handleInputChange}
+                    className="input"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -566,10 +617,9 @@ function InputForm() {
         {selectedAnalyses.some(analysis => analysis.id === 'multiples') && (
           <div className="card">
             <h2>Comparable Multiples</h2>
-            {renderMultiplesInput('ev_ebitda', 'EV/EBITDA Multiples')}
-            {renderMultiplesInput('pe_ratio', 'P/E Multiples')}
-            {renderMultiplesInput('ev_fcf', 'EV/FCF Multiples')}
-            {renderMultiplesInput('ev_revenue', 'EV/Revenue Multiples')}
+            {renderMultiplesInput('comparable_multiples.EV/EBITDA', 'EV/EBITDA Multiples')}
+            {renderMultiplesInput('comparable_multiples.EV/Revenue', 'EV/Revenue Multiples')}
+            {renderMultiplesInput('comparable_multiples.P/E', 'P/E Multiples')}
           </div>
         )}
 
@@ -583,11 +633,11 @@ function InputForm() {
                 <input
                   type="number"
                   name="wacc_range_min"
-                  value={formData.wacc_range[0]}
+                  value={formData.sensitivity_analysis.weighted_average_cost_of_capital[0]}
                   onChange={(e) => {
-                    const newArray = [...formData.wacc_range];
+                    const newArray = [...formData.sensitivity_analysis.weighted_average_cost_of_capital];
                     newArray[0] = parseFloat(e.target.value) || 0;
-                    setFormData(prev => ({ ...prev, wacc_range: newArray }));
+                    setFormData(prev => ({ ...prev, sensitivity_analysis: { ...prev.sensitivity_analysis, weighted_average_cost_of_capital: newArray } }));
                   }}
                   className="input"
                   step="0.001"
@@ -598,11 +648,11 @@ function InputForm() {
                 <input
                   type="number"
                   name="wacc_range_max"
-                  value={formData.wacc_range[4]}
+                  value={formData.sensitivity_analysis.weighted_average_cost_of_capital[4]}
                   onChange={(e) => {
-                    const newArray = [...formData.wacc_range];
+                    const newArray = [...formData.sensitivity_analysis.weighted_average_cost_of_capital];
                     newArray[4] = parseFloat(e.target.value) || 0;
-                    setFormData(prev => ({ ...prev, wacc_range: newArray }));
+                    setFormData(prev => ({ ...prev, sensitivity_analysis: { ...prev.sensitivity_analysis, weighted_average_cost_of_capital: newArray } }));
                   }}
                   className="input"
                   step="0.001"
@@ -613,11 +663,11 @@ function InputForm() {
                 <input
                   type="number"
                   name="ebit_margin_range_min"
-                  value={formData.ebit_margin_range[0]}
+                  value={formData.sensitivity_analysis.ebit_margin[0]}
                   onChange={(e) => {
-                    const newArray = [...formData.ebit_margin_range];
+                    const newArray = [...formData.sensitivity_analysis.ebit_margin];
                     newArray[0] = parseFloat(e.target.value) || 0;
-                    setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
+                    setFormData(prev => ({ ...prev, sensitivity_analysis: { ...prev.sensitivity_analysis, ebit_margin: newArray } }));
                   }}
                   className="input"
                   step="0.01"
@@ -628,11 +678,11 @@ function InputForm() {
                 <input
                   type="number"
                   name="ebit_margin_range_max"
-                  value={formData.ebit_margin_range[4]}
+                  value={formData.sensitivity_analysis.ebit_margin[4]}
                   onChange={(e) => {
-                    const newArray = [...formData.ebit_margin_range];
+                    const newArray = [...formData.sensitivity_analysis.ebit_margin];
                     newArray[4] = parseFloat(e.target.value) || 0;
-                    setFormData(prev => ({ ...prev, ebit_margin_range: newArray }));
+                    setFormData(prev => ({ ...prev, sensitivity_analysis: { ...prev.sensitivity_analysis, ebit_margin: newArray } }));
                   }}
                   className="input"
                   step="0.01"
@@ -652,7 +702,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_ebit_margin_mean"
-                  value={formData.mc_ebit_margin_mean}
+                  value={formData.monte_carlo_specs.ebit_margin.params.mean}
                   onChange={handleInputChange}
                   className="input"
                   step="0.01"
@@ -663,7 +713,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_ebit_margin_std"
-                  value={formData.mc_ebit_margin_std}
+                  value={formData.monte_carlo_specs.ebit_margin.params.std}
                   onChange={handleInputChange}
                   className="input"
                   step="0.01"
@@ -674,7 +724,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_wacc_mean"
-                  value={formData.mc_wacc_mean}
+                  value={formData.monte_carlo_specs.weighted_average_cost_of_capital.params.mean}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
@@ -685,7 +735,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_wacc_std"
-                  value={formData.mc_wacc_std}
+                  value={formData.monte_carlo_specs.weighted_average_cost_of_capital.params.std}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
@@ -696,7 +746,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_terminal_growth_mean"
-                  value={formData.mc_terminal_growth_mean}
+                  value={formData.monte_carlo_specs.terminal_growth_rate.params.mean}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
@@ -707,7 +757,7 @@ function InputForm() {
                 <input
                   type="number"
                   name="mc_terminal_growth_std"
-                  value={formData.mc_terminal_growth_std}
+                  value={formData.monte_carlo_specs.terminal_growth_rate.params.std}
                   onChange={handleInputChange}
                   className="input"
                   step="0.001"
