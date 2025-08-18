@@ -1,14 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import Analysis, analysis_schema, analyses_schema
-from app.services.finance_core_service import FinanceCoreService
-import sys
-import os
 
 analysis_bp = Blueprint('analysis', __name__)
-
-# Add finance core to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'finance_core'))
 
 @analysis_bp.route('/types', methods=['GET'])
 def get_analysis_types():

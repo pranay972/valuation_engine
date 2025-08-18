@@ -46,28 +46,12 @@ def get_analysis_status(analysis_id):
         analysis = Analysis.query.get_or_404(analysis_id)
         result = AnalysisResult.query.filter_by(analysis_id=analysis_id).first()
         
-        # Get task status if processing
-        task_status = None
-        if analysis.status == 'processing':
-            try:
-                from app.services.celery_service import get_task_status
-                task_status = get_task_status(analysis_id)
-            except Exception as e:
-                # Fallback if task status check fails
-                task_status = {
-                    'state': 'PROCESSING',
-                    'status': f'Analysis is being processed (status check error: {str(e)})'
-                }
-        
         response_data = {
             'analysis_id': analysis.id,
             'status': analysis.status,
             'created_at': analysis.created_at.isoformat(),
             'updated_at': analysis.updated_at.isoformat()
         }
-        
-        if task_status:
-            response_data['task_status'] = task_status
         
         if result:
             response_data['has_results'] = True
