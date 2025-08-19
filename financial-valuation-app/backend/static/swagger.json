@@ -1,0 +1,483 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Financial Valuation API",
+        "description": "Professional financial valuation system with multiple analysis methods",
+        "version": "1.0.0",
+        "contact": {
+            "name": "Valuation Team",
+            "email": "support@valuation.com"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server"
+        }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health Check",
+                "description": "Check if the API is running",
+                "tags": ["Health"],
+                "responses": {
+                    "200": {
+                        "description": "API is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "healthy"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Financial Valuation API is running"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/analysis/types": {
+            "get": {
+                "summary": "Get Analysis Types",
+                "description": "Retrieve all available financial analysis types",
+                "tags": ["Analysis"],
+                "responses": {
+                    "200": {
+                        "description": "List of analysis types",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "string",
+                                                "example": "dcf_wacc"
+                                            },
+                                            "name": {
+                                                "type": "string",
+                                                "example": "DCF Valuation (WACC)"
+                                            },
+                                            "description": {
+                                                "type": "string",
+                                                "example": "Discounted Cash Flow using Weighted Average Cost of Capital"
+                                            },
+                                            "complexity": {
+                                                "type": "string",
+                                                "example": "Medium"
+                                            },
+                                            "icon": {
+                                                "type": "string",
+                                                "example": "📊"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/analysis": {
+            "post": {
+                "summary": "Create Analysis",
+                "description": "Create a new financial analysis",
+                "tags": ["Analysis"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["analysis_type"],
+                                "properties": {
+                                    "analysis_type": {
+                                        "type": "string",
+                                        "description": "Type of analysis to perform",
+                                        "example": "dcf_wacc"
+                                    },
+                                    "company_name": {
+                                        "type": "string",
+                                        "description": "Name of the company being analyzed",
+                                        "example": "Tech Corp"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Analysis created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string",
+                                            "example": "123e4567-e89b-12d3-a456-426614174000"
+                                        },
+                                        "analysis_type": {
+                                            "type": "string",
+                                            "example": "dcf_wacc"
+                                        },
+                                        "company_name": {
+                                            "type": "string",
+                                            "example": "Tech Corp"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "example": "created"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Analysis type is required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/valuation/{analysis_id}/inputs": {
+            "post": {
+                "summary": "Submit Valuation Inputs",
+                "description": "Submit financial inputs for valuation analysis",
+                "tags": ["Valuation"],
+                "parameters": [
+                    {
+                        "name": "analysis_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Analysis ID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "revenue_projections": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        },
+                                        "example": [1000, 1100, 1210, 1331, 1464]
+                                    },
+                                    "ebit_margin": {
+                                        "type": "number",
+                                        "example": 0.15
+                                    },
+                                    "tax_rate": {
+                                        "type": "number",
+                                        "example": 0.25
+                                    },
+                                    "wacc": {
+                                        "type": "number",
+                                        "example": 0.10
+                                    },
+                                    "terminal_growth": {
+                                        "type": "number",
+                                        "example": 0.03
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Inputs submitted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "example": "processing"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Analysis started"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "Input data is required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/results/{analysis_id}/status": {
+            "get": {
+                "summary": "Get Analysis Status",
+                "description": "Check the status of an analysis",
+                "tags": ["Results"],
+                "parameters": [
+                    {
+                        "name": "analysis_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Analysis ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analysis status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "example": "completed"
+                                        },
+                                        "progress": {
+                                            "type": "number",
+                                            "example": 100
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/results/{analysis_id}/results": {
+            "get": {
+                "summary": "Get Analysis Results",
+                "description": "Retrieve the results of a completed analysis",
+                "tags": ["Results"],
+                "parameters": [
+                    {
+                        "name": "analysis_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Analysis ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Analysis results",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "analysis_type": {
+                                            "type": "string"
+                                        },
+                                        "results": {
+                                            "type": "object",
+                                            "properties": {
+                                                "dcf_valuation": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "enterprise_value": {
+                                                            "type": "number",
+                                                            "example": 1453.5
+                                                        },
+                                                        "equity_value": {
+                                                            "type": "number",
+                                                            "example": 1353.5
+                                                        },
+                                                        "price_per_share": {
+                                                            "type": "number",
+                                                            "example": 29.94
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csv/sample": {
+            "get": {
+                "summary": "Download Sample CSV",
+                "description": "Download a sample CSV file with financial data",
+                "tags": ["Data"],
+                "responses": {
+                    "200": {
+                        "description": "Sample CSV file",
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csv/upload": {
+            "post": {
+                "summary": "Upload CSV Data",
+                "description": "Upload CSV file with financial data",
+                "tags": ["Data"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "CSV file to upload"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "CSV uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "CSV uploaded successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "No file provided"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Health check endpoints"
+        },
+        {
+            "name": "Analysis",
+            "description": "Analysis management endpoints"
+        },
+        {
+            "name": "Valuation",
+            "description": "Valuation calculation endpoints"
+        },
+        {
+            "name": "Results",
+            "description": "Results retrieval endpoints"
+        },
+        {
+            "name": "Data",
+            "description": "Data import/export endpoints"
+        }
+    ],
+    "components": {
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string"
+                    },
+                    "details": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+} 

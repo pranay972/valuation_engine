@@ -1,0 +1,111 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: financial-valuation-app/frontend/package-lock.json
+        
+    - name: Install Python dependencies
+      run: |
+        cd financial-valuation-app/backend
+        pip install poetry
+        poetry config virtualenvs.create false
+        poetry install --no-interaction --no-ansi
+        
+    - name: Install Node.js dependencies
+      run: |
+        cd financial-valuation-app/frontend
+        npm install
+        
+    - name: Run backend tests
+      run: |
+        cd financial-valuation-app/backend
+        if [ -d "tests" ]; then
+          echo "Running API tests..."
+          python -m pytest tests/test_app_simple.py -v --tb=short
+          echo "Running comprehensive endpoint tests..."
+          python -m pytest tests/test_endpoints_minimal.py -v --tb=short
+          echo "Running finance core tests..."
+          python -m pytest tests/test_finance_core.py -v --tb=short
+          echo "Running API-local parity tests..."
+          python -m pytest tests/test_api_local_parity.py -v -s --tb=short
+        else
+          echo "No backend tests directory found, skipping..."
+        fi
+        
+    - name: Run frontend tests (if available)
+      run: |
+        cd financial-valuation-app/frontend
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test -- --watchAll=false --passWithNoTests
+        else
+          echo "No frontend tests configured, skipping..."
+        fi
+        
+    - name: Test API endpoints
+      run: |
+        cd financial-valuation-app/backend
+        
+        # Set environment variables for testing
+        export FLASK_ENV=testing
+        export SECRET_KEY=test-secret-key
+        export DATABASE_URL=sqlite:///test.db
+        export DEV_DATABASE_URL=sqlite:///test.db
+        export TEST_DATABASE_URL=sqlite:///test.db
+        
+        # Test if Flask app can be created
+        echo "Testing Flask app creation..."
+        python -c "from app import create_app; app = create_app('testing'); print('✅ Flask app created successfully')"
+        
+        # Test endpoints using Flask test client (more reliable for CI)
+        echo "Testing API endpoints with Flask test client..."
+        python -c "
+        from app import create_app
+        app = create_app('testing')
+        with app.test_client() as client:
+            # Test health endpoint
+            response = client.get('/health')
+            print(f'Health endpoint: {response.status_code} - {response.get_data(as_text=True)}')
+            assert response.status_code == 200
+            
+            # Test analysis types endpoint
+            response = client.get('/api/analysis/types')
+            print(f'Analysis types endpoint: {response.status_code} - {response.get_data(as_text=True)}')
+            assert response.status_code == 200
+            
+            # Test swagger.json endpoint
+            response = client.get('/static/swagger.json')
+            print(f'Swagger JSON endpoint: {response.status_code}')
+            assert response.status_code == 200
+            
+            # Test swagger docs endpoint
+            response = client.get('/api/docs/')
+            print(f'Swagger docs endpoint: {response.status_code}')
+            assert response.status_code == 200
+            
+        print('✅ All endpoint tests passed!')
+        "
+        
+        echo "✅ All API tests passed!" 
