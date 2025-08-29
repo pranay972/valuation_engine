@@ -13,8 +13,8 @@ function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [analysisStatus, setAnalysisStatus] = useState({});
-  const [isPolling, setIsPolling] = useState(false);
-  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+  // const [isPolling, setIsPolling] = useState(false);
+  // const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
   const pollingIntervalRef = useRef(null);
 
   // Simple polling - just hit the API every 2 seconds
@@ -22,7 +22,7 @@ function Results() {
     if (selectedAnalysisIds.length === 0) return;
 
     // Start polling
-    setIsPolling(true);
+    // setIsPolling(true);
     pollingIntervalRef.current = setInterval(() => {
       fetchResults();
     }, 2000);
@@ -101,7 +101,7 @@ function Results() {
       );
 
       if (allComplete) {
-        setIsPolling(false);
+        // setIsPolling(false);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -131,10 +131,10 @@ function Results() {
     return `${(value * 100).toFixed(2)}%`;
   };
 
-  const getAnalysisName = (analysisTypeId) => {
-    const analysis = analysisTypes.find(type => type.id === analysisTypeId);
-    return analysis ? analysis.name : analysisTypeId;
-  };
+  // const getAnalysisName = (analysisTypeId) => {
+  //   const analysis = analysisTypes.find(type => type.id === analysisTypeId);
+  //   return analysis ? analysis.name : analysisTypeId;
+  // };
 
   const wasAnalysisSelected = (analysisTypeId) => {
     // First check if it was explicitly selected from localStorage
@@ -653,7 +653,7 @@ function Results() {
 
         <div style={{ marginTop: '20px', fontSize: '14px', color: '#6c757d' }}>
           <p>🔄 Auto-refreshing every 2 seconds...</p>
-          <p>Last update: {lastUpdateTime.toLocaleTimeString()}</p>
+          <p>Last update: {new Date().toLocaleTimeString()}</p>
         </div>
       </div>
     </div>

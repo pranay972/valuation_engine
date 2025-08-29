@@ -35,5 +35,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:8001"
-} 
+  "proxy": "http://backend:5000"
+}

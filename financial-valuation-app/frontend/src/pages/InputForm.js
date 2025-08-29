@@ -7,7 +7,7 @@ function InputForm() {
   const { analysisType } = useParams();
   const navigate = useNavigate();
   const [selectedAnalyses, setSelectedAnalyses] = useState([]);
-  const [selectedAnalysisTypeIds, setSelectedAnalysisTypeIds] = useState([]);
+  // const [selectedAnalysisTypeIds, setSelectedAnalysisTypeIds] = useState([]);
   const [formData, setFormData] = useState({
     // Company Information
     company_name: '',
@@ -105,7 +105,7 @@ function InputForm() {
   useEffect(() => {
     if (analysisType) {
       const analysisIds = analysisType.split(',');
-      setSelectedAnalysisTypeIds(analysisIds);
+      // setSelectedAnalysisTypeIds(analysisIds);
       fetchAnalysisTypes(analysisIds);
     }
   }, [analysisType]);
