@@ -16,53 +16,46 @@ fi
 
 echo "✅ Docker and Docker Compose are installed"
 
+# Complete rebuild process
+echo "🔄 Starting complete rebuild process..."
+
 # Stop any existing containers
 echo "🛑 Stopping existing containers..."
 docker-compose down
 
-# Start Redis first
-echo "🔴 Starting Redis..."
-docker-compose up -d redis
+# Clean up Docker system
+echo "🧹 Cleaning up Docker system..."
+docker system prune -a --volumes -f
 
-# Wait for Redis to be ready
-echo "⏳ Waiting for Redis to be ready..."
-sleep 5
+# Set environment variable for production
+echo "🌐 Setting production API URL..."
+export REACT_APP_API_URL=https://valuationengine.app/api
+echo "   REACT_APP_API_URL=${REACT_APP_API_URL}"
 
-# Start Celery services (they only need Redis)
-echo "🐛 Starting Celery services..."
-docker-compose up -d celery celery-beat celery-flower
+# Rebuild all services from scratch
+echo "🔨 Rebuilding all services (no cache)..."
+docker-compose build --no-cache
 
-# Wait for Celery services to be ready
-echo "⏳ Waiting for Celery services to be ready..."
-sleep 10
+# Start all services
+echo "🚀 Starting all services..."
+docker-compose up -d
 
-# Start Backend
-echo "🔧 Starting Backend..."
-docker-compose up -d backend
-
-# Wait for backend to be ready
-echo "⏳ Waiting for Backend to be ready..."
-sleep 10
-
-# Start Frontend
-echo "⚛️  Starting Frontend..."
-docker-compose up -d frontend
-
-echo ""
+# Wait for all services to be ready
 echo "⏳ Waiting for all services to be ready..."
-sleep 15
+sleep 20
 
 echo ""
 echo "🎉 Application is ready!"
 echo ""
 echo "📱 Access the application:"
-echo "   Frontend: http://localhost:3001"
-echo "   Backend API: http://localhost:8001"
-echo "   Celery Flower (Monitoring): http://localhost:5555"
+echo "   Frontend: https://valuationengine.app"
+echo "   Backend API: https://valuationengine.app/api"
+echo "   Celery Flower (Monitoring): http://34.228.202.230:5555"
 echo ""
 echo "🔧 Useful commands:"
 echo "   View logs: docker-compose logs -f [service_name]"
 echo "   Stop: docker-compose down"
 echo "   Restart: docker-compose restart"
+echo "   Complete rebuild: ./quick-start.sh"
 echo ""
-echo "📊 The application is now running with Celery worker and monitoring!" 
+echo "📊 The application is now running with production HTTPS configuration!" 
